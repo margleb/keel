@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.Nulls;
 import java.util.List;
 
 public record WorkItem(
+        String title,
         String description,
         Size size,
         @JsonSetter(nulls = Nulls.AS_EMPTY) List<String> considerations,
@@ -16,7 +17,7 @@ public record WorkItem(
         devNotes = devNotes == null ? List.of() : List.copyOf(devNotes);
     }
 
-    public WorkItem(String description, Size size) {
-        this(description, size, List.of(), List.of());
+    public WorkItem(String title, String description, Size size) {
+        this(title, description, size, List.of(), List.of());
     }
 }

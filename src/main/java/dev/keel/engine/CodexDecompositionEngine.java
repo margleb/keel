@@ -110,13 +110,20 @@ public class CodexDecompositionEngine implements DecompositionEngine {
 
                 Сначала агент ОБЯЗАН читать реальный код, как описано выше, но результат разложи
                 по трем слоям:
-                1. title этапа и description пункта — только человеческий смысл и намерение.
+                1. title этапа, title пункта и description пункта — только человеческий смысл и намерение.
                 2. considerations — короткие человеческие предупреждения, риски и подсказки переиспользования.
                 3. devNotes — технические детали из репозитория.
 
-                В title этапа и description пункта НЕ ДОЛЖНО быть ни одного имени файла, класса,
+                Для КАЖДОЙ задачи обязательно верни оба поля:
+                - title — короткий заголовок одной строкой, человеческим языком, без кода.
+                - description — 2-4 предложения, ЧЕЛОВЕЧЕСКИМ языком: что именно нужно сделать
+                  и каким должен быть результат. Это мини-ТЗ, понятное и аналитику, и агенту.
+                  Это НЕ список рисков, потому что риски должны быть в considerations. Это НЕ код.
+
+                В title этапа, title пункта и description пункта НЕ ДОЛЖНО быть ни одного имени файла, класса,
                 метода, эндпоинта, таблицы, DTO, пакета или другого технического идентификатора.
-                Они должны быть понятны не-техническому читателю, например:
+                Они должны быть понятны не-техническому читателю. Имена файлов, классов, эндпоинтов
+                и других технических сущностей указывай только в devNotes. Пример допустимого title:
                 "Реализовать подачу и согласование заявки".
 
                 considerations заполняй человеческим языком из анализа кода, но БЕЗ имен файлов,
@@ -138,7 +145,7 @@ public class CodexDecompositionEngine implements DecompositionEngine {
                 Preserve real dependencies when they affect delivery order.
                 Split by the essence of the work, not by technical layers.
                 Do not create stages like controller, service, repository, database, tests, or UI unless they are true domain slices.
-                Every work item must have a size: S, M, or L.
+                Every work item must have title, description, and size: S, M, or L.
                 Every work item must include considerations and devNotes arrays. They may be empty arrays.
                 Include a focused list of integration risks.
 
@@ -156,7 +163,8 @@ public class CodexDecompositionEngine implements DecompositionEngine {
                       "title": "Human-readable stage title without technical identifiers",
                       "items": [
                         {
-                          "description": "Human-readable work item intent without technical identifiers",
+                          "title": "Short human-readable work item title without code or technical identifiers",
+                          "description": "Describe what the user should be able to do and how the completed result should behave. Explain the expected outcome in plain language so both analysts and implementation agents understand the task.",
                           "size": "S",
                           "considerations": [
                             "Human-readable warning or reuse hint without technical identifiers"

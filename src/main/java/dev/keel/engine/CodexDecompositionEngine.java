@@ -108,15 +108,38 @@ public class CodexDecompositionEngine implements DecompositionEngine {
                 Сначала исследуй кодовую базу в своей рабочей директории: прочитай ключевые исходные файлы,
                 пойми существующую архитектуру и что уже реализовано. Не отвечай только по тексту требования.
 
-                Каждый этап и пункт привязывай к реальному коду — называй конкретные существующие
-                файлы/модули/классы, указывай что УЖЕ есть (и переиспользуется) и чего НЕТ.
-                Integration risks выводи из настоящего кода (существующая авторизация, хранение файлов,
-                внешние интеграции).
+                Сначала агент ОБЯЗАН читать реальный код, как описано выше, но результат разложи
+                по трем слоям:
+                1. title этапа и description пункта — только человеческий смысл и намерение.
+                2. considerations — короткие человеческие предупреждения, риски и подсказки переиспользования.
+                3. devNotes — технические детали из репозитория.
 
-                Decompose the requirement by business/domain areas, ordered by dependencies.
+                В title этапа и description пункта НЕ ДОЛЖНО быть ни одного имени файла, класса,
+                метода, эндпоинта, таблицы, DTO, пакета или другого технического идентификатора.
+                Они должны быть понятны не-техническому читателю, например:
+                "Реализовать подачу и согласование заявки".
+
+                considerations заполняй человеческим языком из анализа кода, но БЕЗ имен файлов,
+                классов, методов, эндпоинтов, таблиц, DTO, пакетов и других технических идентификаторов.
+                Примеры тона: "в системе уже есть похожий механизм — проверить, можно ли переиспользовать";
+                "легко спутать с соседним модулем — конфликт доменов"; "возможно, часть уже есть".
+
+                devNotes — единственное место, где можно и нужно указывать реальные файлы, классы,
+                методы, эндпоинты, DTO, таблицы и другие технические детали из кодовой базы.
+                Не помещай технические имена ни в какие другие поля.
+
+                integrationRisks оставь верхнеуровневым списком сквозных человеческих рисков интеграции
+                из настоящего кода: авторизация, хранение файлов, внешние интеграции, соседние домены.
+                Не превращай integrationRisks в список файлов или классов.
+
+                Decompose the requirement by business/domain areas.
+                Order stages by user/business value: first the core functionality that delivers the main
+                user outcome, then secondary work such as roles/administration and reporting.
+                Preserve real dependencies when they affect delivery order.
                 Split by the essence of the work, not by technical layers.
                 Do not create stages like controller, service, repository, database, tests, or UI unless they are true domain slices.
                 Every work item must have a size: S, M, or L.
+                Every work item must include considerations and devNotes arrays. They may be empty arrays.
                 Include a focused list of integration risks.
 
                 You MUST return ONLY raw JSON.
@@ -130,11 +153,17 @@ public class CodexDecompositionEngine implements DecompositionEngine {
                 {
                   "stages": [
                     {
-                      "title": "Domain capability or dependency stage",
+                      "title": "Human-readable stage title without technical identifiers",
                       "items": [
                         {
-                          "description": "Concrete work item at the domain level",
-                          "size": "S"
+                          "description": "Human-readable work item intent without technical identifiers",
+                          "size": "S",
+                          "considerations": [
+                            "Human-readable warning or reuse hint without technical identifiers"
+                          ],
+                          "devNotes": [
+                            "Concrete real file/class/endpoint/method from the repository"
+                          ]
                         }
                       ]
                     }

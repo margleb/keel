@@ -1,0 +1,8 @@
+keel:
+  engine: codex
+  codex:
+    command:
+      - codex
+      - exec
+      - "-"
+    repo-path: /home/margleb/projects/ranhigs/www

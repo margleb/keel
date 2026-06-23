@@ -223,6 +223,73 @@
             color: var(--ink-faint)
         }
 
+        .history {
+            margin-top: 18px
+        }
+
+        .history h2 {
+            font-family: var(--mono);
+            font-size: 11px;
+            letter-spacing: .13em;
+            text-transform: uppercase;
+            color: var(--ink-faint);
+            margin: 0 0 10px;
+            font-weight: 500;
+            padding-left: 2px
+        }
+
+        .hist-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px
+        }
+
+        .hist-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 9px;
+            padding: 11px 14px;
+            cursor: pointer;
+            text-align: left;
+            width: 100%
+        }
+
+        .hist-item:hover {
+            border-color: var(--keel)
+        }
+
+        .hist-item.active {
+            border-color: var(--keel);
+            background: var(--keel-tint)
+        }
+
+        .hist-item .h-req {
+            flex: 1;
+            font-size: 14px;
+            color: var(--ink);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap
+        }
+
+        .hist-item .h-meta {
+            flex: none;
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--ink-faint)
+        }
+
+        .req-echo {
+            font-size: 14px;
+            color: var(--ink-soft);
+            line-height: 1.55;
+            margin-bottom: 11px;
+            max-width: 760px
+        }
+
         .state {
             display: none;
             text-align: center;
@@ -689,6 +756,11 @@
             </div>
         </div>
 
+        <div class="history" id="history" style="display:none">
+            <h2>Прошлые разборы</h2>
+            <div class="hist-list" id="histList"></div>
+        </div>
+
         <div class="state" id="loading">
             <div class="snippet"><span class="cap">анализирую требование</span><span class="txt" id="loadSnip"></span>
             </div>
@@ -703,8 +775,9 @@
 
         <div class="results" id="results">
             <div class="context">
-                <div class="eyebrow">разбор</div>
+                <div class="eyebrow" id="ctxEyebrow">разбор</div>
                 <h1>Сегментированное требование</h1>
+                <div class="req-echo" id="reqEcho"></div>
                 <div class="meta" id="metaLine"></div>
             </div>
             <div class="grid">
@@ -743,8 +816,8 @@
             try {
                 const r = await fetch('/api/decompose', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requirement: req }) });
                 if (!r.ok) throw new Error('Сервер вернул ' + r.status + ' ' + r.statusText);
-                const data = await r.json();
-                render(data); show('results');
+                const stored = await r.json();
+                showStored(stored); loadList();
             } catch (e) {
                 $('errMsg').textContent = 'Не получилось разобрать.\n' + e.message + '\n\nПроверь, что приложение запущено и движок настроен (keel.engine, repo-path).';
                 show('errBox');
@@ -753,9 +826,9 @@
 
         function show(which) { ['loading', 'errBox', 'results'].forEach(id => $(id).classList.toggle('on', id === which)); }
 
-        function render(data) {
-            const stages = Array.isArray(data.stages) ? data.stages : [];
-            const risks = Array.isArray(data.integrationRisks) ? data.integrationRisks : [];
+        function render(result) {
+            const stages = Array.isArray(result && result.stages) ? result.stages : [];
+            const risks = Array.isArray(result && result.integrationRisks) ? result.integrationRisks : [];
             let total = 0, sz = { S: 0, M: 0, L: 0 }, cons = 0;
             const deck = $('deck'); deck.innerHTML = '';
             stages.forEach((st, si) => {
@@ -783,6 +856,47 @@
             $('risks').innerHTML = risks.length ? risks.map(r => `<div class="risk"><span>!</span><div>${esc(r)}</div></div>`).join('') : '<div class="risk"><div style="color:var(--ink-faint)">рисков не выделено</div></div>';
             $('metaLine').innerHTML = `${stages.length} этапов&nbsp;·&nbsp;${total} задач&nbsp;·&nbsp;S ${sz.S} / M ${sz.M} / L ${sz.L}&nbsp;·&nbsp;«что учесть»: ${cons}`;
         }
+
+        let currentId = null;
+        function fmtDate(iso) { try { return new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
+        function markActive() { document.querySelectorAll('.hist-item').forEach(b => b.classList.toggle('active', Number(b.dataset.id) === currentId)); }
+
+        function showStored(stored, push) {
+            currentId = stored.id;
+            $('ctxEyebrow').textContent = 'разбор #' + stored.id + (stored.createdAt ? ' · ' + fmtDate(stored.createdAt) : '');
+            const req = (stored.requirement || '').replace(/\s+/g, ' ').trim();
+            $('reqEcho').textContent = req.slice(0, 240) + (req.length > 240 ? '…' : '');
+            render(stored.result || {});
+            show('results'); markActive();
+            if (push !== false) { try { history.pushState({ id: stored.id }, '', '?id=' + stored.id); } catch (e) { } }
+        }
+
+        async function loadList() {
+            try {
+                const r = await fetch('/api/decompositions'); if (!r.ok) return;
+                const list = await r.json(); const box = $('histList');
+                if (!Array.isArray(list) || !list.length) { $('history').style.display = 'none'; return; }
+                $('history').style.display = '';
+                box.innerHTML = list.map(it => '<button class="hist-item" data-id="' + it.id + '"><span class="h-req">' + esc(it.requirementPreview || '(без текста)') + '</span><span class="h-meta">' + (it.taskCount || 0) + ' зад. · ' + fmtDate(it.createdAt) + '</span></button>').join('');
+                box.querySelectorAll('.hist-item').forEach(b => b.onclick = () => openId(Number(b.dataset.id)));
+                markActive();
+            } catch (e) { }
+        }
+
+        async function openId(id, push) {
+            show('loading'); $('loadSnip').textContent = 'Открываю сохранённый разбор #' + id; $('loadMsg').textContent = 'Загружаю из базы…'; $('loadElapsed').textContent = '';
+            try {
+                const r = await fetch('/api/decompositions/' + id);
+                if (r.status === 404) throw new Error('Разбор #' + id + ' не найден.');
+                if (!r.ok) throw new Error('Сервер вернул ' + r.status);
+                showStored(await r.json(), push);
+            } catch (e) { $('errMsg').textContent = e.message; show('errBox'); }
+        }
+
+        window.addEventListener('popstate', () => { const id = new URLSearchParams(location.search).get('id'); if (id) { openId(Number(id), false); } else { currentId = null; show('home'); markActive(); } });
+
+        loadList();
+        (function () { const id = new URLSearchParams(location.search).get('id'); if (id) openId(Number(id), false); })();
 
         document.querySelectorAll('#viewSeg button').forEach(b => b.addEventListener('click', () => {
             document.querySelectorAll('#viewSeg button').forEach(x => x.classList.remove('on'));

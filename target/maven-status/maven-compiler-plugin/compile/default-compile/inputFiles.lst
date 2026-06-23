@@ -10,3 +10,9 @@
 /home/margleb/projects/keel/src/main/java/dev/keel/model/Stage.java
 /home/margleb/projects/keel/src/main/java/dev/keel/model/WorkItem.java
 /home/margleb/projects/keel/src/main/java/dev/keel/service/DecompositionService.java
+/home/margleb/projects/keel/src/main/java/dev/keel/store/Decomposition.java
+/home/margleb/projects/keel/src/main/java/dev/keel/store/DecompositionNotFoundException.java
+/home/margleb/projects/keel/src/main/java/dev/keel/store/DecompositionRepository.java
+/home/margleb/projects/keel/src/main/java/dev/keel/store/DecompositionStorageService.java
+/home/margleb/projects/keel/src/main/java/dev/keel/store/DecompositionSummary.java
+/home/margleb/projects/keel/src/main/java/dev/keel/store/StoredDecompositionResponse.java

@@ -6,3 +6,14 @@ keel:
       - exec
       - "-"
     repo-path: /home/margleb/projects/ranhigs/www
+
+spring:
+  datasource:
+    url: jdbc:h2:file:./data/keel;AUTO_SERVER=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true

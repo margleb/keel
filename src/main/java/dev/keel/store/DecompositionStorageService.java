@@ -26,8 +26,14 @@ public class DecompositionStorageService {
 
     @Transactional
     public Decomposition save(String requirement, DecompositionResult result) {
+        return save(requirement, result, null);
+    }
+
+    @Transactional
+    public Decomposition save(String requirement, DecompositionResult result, Long requirementId) {
         Decomposition decomposition = new Decomposition();
         decomposition.setRequirement(requirement);
+        decomposition.setRequirementId(requirementId);
         decomposition.setResultJson(writeResult(result));
         decomposition.setStageCount(stageCount(result));
         decomposition.setTaskCount(taskCount(result));
@@ -46,6 +52,14 @@ public class DecompositionStorageService {
     @Transactional(readOnly = true)
     public List<DecompositionSummary> listRecent() {
         return decompositionRepository.findTop100ByOrderByCreatedAtDesc()
+                .stream()
+                .map(this::toSummary)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<DecompositionSummary> listByRequirementId(Long requirementId) {
+        return decompositionRepository.findByRequirementId(requirementId)
                 .stream()
                 .map(this::toSummary)
                 .toList();

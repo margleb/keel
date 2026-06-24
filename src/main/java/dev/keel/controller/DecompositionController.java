@@ -35,7 +35,7 @@ public class DecompositionController {
 
     @PostMapping("/decompose")
     public StoredDecompositionResponse decompose(@RequestBody DecompositionRequest request) {
-        return decompositionService.decompose(request.requirement());
+        return decompositionService.decompose(request.requirement(), request.requirementId());
     }
 
     @GetMapping("/decompositions")

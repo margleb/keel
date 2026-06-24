@@ -1,6 +1,7 @@
 package dev.keel.controller;
 
 import dev.keel.store.DecompositionNotFoundException;
+import dev.keel.requirement.RequirementNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -16,6 +17,12 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(DecompositionNotFoundException.class)
     public ResponseEntity<ApiError> handleNotFound(DecompositionNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ApiError(exception.getMessage()));
+    }
+
+    @ExceptionHandler(RequirementNotFoundException.class)
+    public ResponseEntity<ApiError> handleNotFound(RequirementNotFoundException exception) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ApiError(exception.getMessage()));
     }

@@ -20,6 +20,8 @@ public class Decomposition {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String requirement;
 
+    private Long requirementId;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -50,6 +52,14 @@ public class Decomposition {
 
     public void setRequirement(String requirement) {
         this.requirement = requirement;
+    }
+
+    public Long getRequirementId() {
+        return requirementId;
+    }
+
+    public void setRequirementId(Long requirementId) {
+        this.requirementId = requirementId;
     }
 
     public Instant getCreatedAt() {

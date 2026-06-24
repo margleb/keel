@@ -1,12 +1,10 @@
-<!-- Keel — смотрелка (шаг 1). Положить в src/main/resources/static/index.html.
-     Открывается на http://localhost:8080/ , ходит в POST /api/decompose того же приложения. -->
 <!DOCTYPE html>
 <html lang="ru">
 
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Keel — разбор требования</title>
+    <title>Keel — требования</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -25,6 +23,8 @@
             --keel-tint: #DCEAE7;
             --amber: #A85E16;
             --amber-tint: #F4E6D4;
+            --ok: #2E7D5B;
+            --ok-tint: #DCEDE3;
             --err: #A33;
             --code-bg: #EBF0EE;
             --code-ink: #37514E;
@@ -40,7 +40,8 @@
 
         html,
         body {
-            margin: 0
+            margin: 0;
+            height: 100%
         }
 
         body {
@@ -49,12 +50,21 @@
             font-family: var(--sans);
             font-size: 15px;
             line-height: 1.6;
-            -webkit-font-smoothing: antialiased
+            -webkit-font-smoothing: antialiased;
+            display: flex;
+            flex-direction: column
         }
 
         button {
             font-family: inherit;
             cursor: pointer
+        }
+
+        textarea,
+        input {
+            font-family: inherit;
+            font-size: 15px;
+            color: var(--ink)
         }
 
         :focus-visible {
@@ -63,37 +73,14 @@
             border-radius: 4px
         }
 
-        textarea {
-            font-family: inherit;
-            font-size: 15px;
-            color: var(--ink);
-            border: 1px solid var(--line-strong);
-            border-radius: 9px;
-            padding: 12px 14px;
-            width: 100%;
-            background: var(--surface);
-            line-height: 1.6;
-            resize: vertical;
-            min-height: 120px
-        }
-
-        textarea:focus {
-            border-color: var(--keel);
-            outline: none
-        }
-
         .topbar {
-            position: sticky;
-            top: 0;
-            z-index: 20;
             display: flex;
             align-items: center;
             gap: 14px;
             padding: 13px 24px;
-            background: rgba(239, 242, 239, .9);
-            backdrop-filter: blur(8px);
+            background: var(--surface);
             border-bottom: 1px solid var(--line);
-            flex-wrap: wrap
+            flex-shrink: 0
         }
 
         .word {
@@ -140,7 +127,7 @@
             border: 1px solid var(--line-strong);
             background: var(--surface);
             color: var(--ink);
-            padding: 9px 15px;
+            padding: 9px 14px;
             border-radius: 8px;
             font-size: 14px;
             font-weight: 500;
@@ -154,7 +141,8 @@
         .btn:disabled {
             color: var(--ink-faint);
             cursor: not-allowed;
-            background: var(--surface-2)
+            background: var(--surface-2);
+            border-color: var(--line)
         }
 
         .btn-primary {
@@ -167,148 +155,310 @@
             background: var(--keel-deep)
         }
 
-        .btn-primary:disabled {
-            background: var(--surface-2);
-            border-color: var(--line);
-            color: var(--ink-faint)
+        .btn-sm {
+            padding: 6px 11px;
+            font-size: 13px
         }
 
-        .soon {
-            font-family: var(--mono);
-            font-size: 9px;
-            letter-spacing: .05em;
-            background: var(--surface-2);
-            border: 1px solid var(--line);
-            color: var(--ink-faint);
-            padding: 1px 5px;
-            border-radius: 4px;
-            margin-left: 6px;
-            vertical-align: 2px
-        }
-
-        .wrap {
-            max-width: 1180px;
-            margin: 0 auto;
-            padding: 26px 26px 90px
-        }
-
-        .input-card {
-            background: var(--surface);
-            border: 1px solid var(--line);
-            border-radius: 12px;
-            padding: 18px 20px
-        }
-
-        .input-card .lbl {
-            font-family: var(--mono);
-            font-size: 11px;
-            letter-spacing: .13em;
-            text-transform: uppercase;
-            color: var(--ink-faint);
-            margin-bottom: 9px
-        }
-
-        .input-row {
+        .shell {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 12px;
-            gap: 12px;
-            flex-wrap: wrap
+            flex: 1;
+            overflow: hidden
         }
 
-        .input-row .hint {
-            font-family: var(--mono);
-            font-size: 11.5px;
-            color: var(--ink-faint)
-        }
-
-        .history {
-            margin-top: 18px
-        }
-
-        .history h2 {
-            font-family: var(--mono);
-            font-size: 11px;
-            letter-spacing: .13em;
-            text-transform: uppercase;
-            color: var(--ink-faint);
-            margin: 0 0 10px;
-            font-weight: 500;
-            padding-left: 2px
-        }
-
-        .hist-list {
+        .sidebar {
+            width: 300px;
+            flex-shrink: 0;
+            border-right: 1px solid var(--line);
+            background: var(--surface);
             display: flex;
             flex-direction: column;
+            overflow: hidden
+        }
+
+        .main {
+            flex: 1;
+            overflow-y: auto;
+            background: var(--paper)
+        }
+
+        .sb-head {
+            padding: 14px 14px 8px;
+            display: flex;
+            align-items: center;
             gap: 8px
         }
 
-        .hist-item {
+        .sb-head h2 {
+            flex: 1;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 0
+        }
+
+        .req-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 6px 12px
+        }
+
+        .req-item {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            padding: 10px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            margin-bottom: 2px
+        }
+
+        .req-item:hover {
+            background: var(--surface-2)
+        }
+
+        .req-item.active {
+            background: var(--keel-tint);
+            border-color: #C5DAD6
+        }
+
+        .ri-title {
+            font-size: 13.5px;
+            font-weight: 500;
+            line-height: 1.4
+        }
+
+        .req-item.active .ri-title {
+            color: var(--keel-deep)
+        }
+
+        .ri-meta {
+            font-family: var(--mono);
+            font-size: 10.5px;
+            color: var(--ink-faint);
+            display: flex;
+            gap: 7px;
+            flex-wrap: wrap;
+            margin-top: 2px
+        }
+
+        .badge {
+            font-family: var(--mono);
+            font-size: 10px;
+            padding: 1px 5px;
+            border-radius: 4px;
+            font-weight: 500
+        }
+
+        .badge-draft {
+            background: var(--surface-2);
+            color: var(--ink-faint);
+            border: 1px solid var(--line)
+        }
+
+        .badge-decomposed {
+            background: var(--keel-tint);
+            color: var(--keel-deep)
+        }
+
+        .badge-pushed {
+            background: var(--ok-tint);
+            color: var(--ok)
+        }
+
+        .empty-list {
+            padding: 20px 14px;
+            text-align: center;
+            color: var(--ink-faint);
+            font-size: 13.5px
+        }
+
+        .new-req {
+            border-top: 1px solid var(--line);
+            padding: 12px 14px;
+            background: var(--surface)
+        }
+
+        .new-req textarea,
+        .new-req input {
+            width: 100%;
+            border: 1px solid var(--line-strong);
+            border-radius: 7px;
+            padding: 7px 10px;
+            background: var(--surface-2);
+            resize: none;
+            display: block;
+            margin-bottom: 7px;
+            font-size: 13.5px
+        }
+
+        .new-req textarea:focus,
+        .new-req input:focus {
+            outline: none;
+            border-color: var(--keel);
+            background: var(--surface)
+        }
+
+        .new-req textarea {
+            min-height: 72px
+        }
+
+        .new-req-toggle {
             display: flex;
             align-items: center;
-            gap: 12px;
-            background: var(--surface);
-            border: 1px solid var(--line);
-            border-radius: 9px;
-            padding: 11px 14px;
+            gap: 6px;
+            font-size: 13.5px;
+            color: var(--keel-deep);
+            font-weight: 500;
             cursor: pointer;
-            text-align: left;
+            padding: 4px 0;
+            border: 0;
+            background: transparent;
             width: 100%
         }
 
-        .hist-item:hover {
-            border-color: var(--keel)
+        .form-hidden {
+            display: none
         }
 
-        .hist-item.active {
-            border-color: var(--keel);
-            background: var(--keel-tint)
-        }
-
-        .hist-item .h-req {
-            flex: 1;
-            font-size: 14px;
-            color: var(--ink);
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap
-        }
-
-        .hist-item .h-meta {
-            flex: none;
-            font-family: var(--mono);
-            font-size: 11px;
-            color: var(--ink-faint)
-        }
-
-        .req-echo {
-            font-size: 14px;
-            color: var(--ink-soft);
-            line-height: 1.55;
-            margin-bottom: 11px;
-            max-width: 760px
-        }
-
-        .state {
-            display: none;
+        .welcome {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: 40px;
             text-align: center;
-            padding: 60px 20px;
             color: var(--ink-soft)
         }
 
-        .state.on {
+        .welcome .big {
+            font-size: 48px;
+            line-height: 1;
+            margin-bottom: 12px
+        }
+
+        .welcome h2 {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--ink);
+            margin: 0 0 8px
+        }
+
+        .welcome p {
+            font-size: 15px;
+            max-width: 340px;
+            margin: 0
+        }
+
+        .req-detail {
+            padding: 26px 30px 60px;
+            max-width: 1060px
+        }
+
+        .req-detail-head {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 18px
+        }
+
+        .req-detail-head h1 {
+            flex: 1;
+            font-size: 22px;
+            font-weight: 600;
+            margin: 0;
+            line-height: 1.3
+        }
+
+        .req-body-text {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 15px 17px;
+            font-size: 14.5px;
+            line-height: 1.7;
+            color: var(--ink-soft);
+            margin-bottom: 18px;
+            white-space: pre-wrap;
+            word-break: break-word
+        }
+
+        .req-edit-form {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 15px 17px;
+            margin-bottom: 18px
+        }
+
+        .req-edit-form input {
+            width: 100%;
+            border: 1px solid var(--line-strong);
+            border-radius: 7px;
+            padding: 7px 10px;
+            font-size: 15px;
+            font-weight: 500;
+            margin-bottom: 9px;
             display: block
         }
 
+        .req-edit-form textarea {
+            width: 100%;
+            border: 1px solid var(--line-strong);
+            border-radius: 7px;
+            padding: 7px 10px;
+            font-size: 14.5px;
+            resize: vertical;
+            min-height: 110px;
+            display: block
+        }
+
+        .req-edit-form input:focus,
+        .req-edit-form textarea:focus {
+            outline: none;
+            border-color: var(--keel)
+        }
+
+        .req-edit-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 9px
+        }
+
+        .decompose-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap
+        }
+
+        .decompose-bar h2 {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0;
+            flex: 1
+        }
+
+        .loading-box {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 24px;
+            text-align: center;
+            margin-bottom: 18px
+        }
+
         .spin {
-            width: 26px;
-            height: 26px;
+            width: 20px;
+            height: 20px;
             border: 3px solid var(--keel-tint);
             border-top-color: var(--keel);
             border-radius: 50%;
             animation: sp .7s linear infinite;
-            margin: 0 auto 16px
+            margin: 0 auto 12px
         }
 
         @keyframes sp {
@@ -317,143 +467,96 @@
             }
         }
 
-        .state .msg {
+        .loading-msg {
             font-family: var(--mono);
-            font-size: 13px;
-            color: var(--keel-deep)
+            font-size: 12.5px;
+            color: var(--keel-deep);
+            margin-bottom: 3px
         }
 
-        .snippet {
-            max-width: 460px;
-            margin: 0 auto 18px;
-            background: var(--surface);
-            border: 1px solid var(--line);
-            border-radius: 9px;
-            padding: 10px 14px;
-            text-align: left;
-            line-height: 1.5
-        }
-
-        .snippet .cap {
-            font-family: var(--mono);
-            font-size: 10px;
-            letter-spacing: .1em;
-            text-transform: uppercase;
-            color: var(--ink-faint);
-            display: block;
-            margin-bottom: 4px
-        }
-
-        .snippet .txt {
-            font-size: 13.5px;
-            color: var(--ink-soft)
-        }
-
-        .bar {
-            height: 4px;
-            width: 320px;
-            max-width: 80%;
-            background: var(--keel-tint);
-            border-radius: 99px;
-            overflow: hidden;
-            margin: 0 auto 16px
-        }
-
-        .bar i {
-            display: block;
-            height: 100%;
-            width: 38%;
-            background: var(--keel);
-            border-radius: 99px;
-            animation: slide 1.3s ease-in-out infinite
-        }
-
-        @keyframes slide {
-            0% {
-                transform: translateX(-110%)
-            }
-
-            100% {
-                transform: translateX(320%)
-            }
-        }
-
-        .elapsed {
-            font-family: var(--mono);
-            font-size: 12px;
-            color: var(--ink-faint);
-            margin-top: 10px
-        }
-
-        .state .note {
+        .loading-elapsed {
             font-family: var(--mono);
             font-size: 11px;
-            color: var(--ink-faint);
-            margin-top: 6px
-        }
-
-        .error {
-            color: var(--err);
-            font-family: var(--mono);
-            font-size: 13px;
-            white-space: pre-wrap
-        }
-
-        .results {
-            display: none
-        }
-
-        .results.on {
-            display: block
-        }
-
-        .context {
-            margin: 30px 2px 4px
-        }
-
-        .eyebrow {
-            font-family: var(--mono);
-            font-size: 11px;
-            letter-spacing: .16em;
-            text-transform: uppercase;
             color: var(--ink-faint)
         }
 
-        .context h1 {
-            font-size: 26px;
-            font-weight: 600;
-            letter-spacing: -.01em;
-            margin: 6px 0 11px
-        }
-
-        .meta {
-            font-family: var(--mono);
-            font-size: 12px;
+        .loading-snip {
+            font-size: 13px;
             color: var(--ink-soft);
-            line-height: 1.9
+            font-style: italic;
+            margin-bottom: 14px;
+            max-width: 480px;
+            margin-left: auto;
+            margin-right: auto
         }
 
-        .grid {
+        .decomp-history {
+            margin-bottom: 24px
+        }
+
+        .dh-label {
+            font-family: var(--mono);
+            font-size: 10.5px;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            color: var(--ink-faint);
+            margin-bottom: 7px
+        }
+
+        .dh-item {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            padding: 9px 12px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            margin-bottom: 5px;
+            cursor: pointer
+        }
+
+        .dh-item:hover {
+            border-color: var(--line-strong)
+        }
+
+        .dh-item.active {
+            border-color: var(--keel);
+            background: var(--keel-tint)
+        }
+
+        .dh-meta {
+            flex: 1;
+            font-family: var(--mono);
+            font-size: 11.5px;
+            color: var(--ink-soft)
+        }
+
+        .dh-counts {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--ink-faint)
+        }
+
+        .result-wrap {
             display: grid;
-            grid-template-columns: 1fr 300px;
-            gap: 30px;
-            margin-top: 18px
+            grid-template-columns: 1fr 268px;
+            gap: 22px
         }
 
-        @media(max-width:920px) {
-            .grid {
+        @media(max-width:860px) {
+            .result-wrap {
                 grid-template-columns: 1fr
             }
         }
 
         .deck {
             position: relative;
-            padding-left: 52px
+            padding-left: 46px
         }
 
         .spine {
             position: absolute;
-            left: 24px;
+            left: 21px;
             top: 14px;
             bottom: 24px;
             width: 2px;
@@ -462,21 +565,21 @@
 
         .stage {
             position: relative;
-            margin-bottom: 28px
+            margin-bottom: 22px
         }
 
         .node {
             position: absolute;
-            left: -44px;
-            width: 36px;
-            height: 36px;
+            left: -38px;
+            width: 31px;
+            height: 31px;
             border-radius: 50%;
             background: var(--surface);
             border: 2px solid var(--keel);
             color: var(--keel-deep);
             font-family: var(--mono);
             font-weight: 500;
-            font-size: 12.5px;
+            font-size: 11.5px;
             display: flex;
             align-items: center;
             justify-content: center
@@ -485,12 +588,12 @@
         .stage-head {
             display: flex;
             align-items: center;
-            gap: 11px;
-            margin: 0 0 13px
+            gap: 9px;
+            margin-bottom: 10px
         }
 
         .stage-title {
-            font-size: 17px;
+            font-size: 15.5px;
             font-weight: 600
         }
 
@@ -503,9 +606,8 @@
         .task {
             background: var(--surface);
             border: 1px solid var(--line);
-            border-radius: 11px;
-            margin-bottom: 9px;
-            transition: .12s
+            border-radius: 9px;
+            margin-bottom: 7px
         }
 
         .task:hover {
@@ -515,23 +617,23 @@
         .thead {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 12px 15px;
+            gap: 8px;
+            padding: 10px 13px;
             cursor: pointer
         }
 
         .chip {
             font-family: var(--mono);
-            font-size: 11px;
+            font-size: 10.5px;
             font-weight: 500;
-            min-width: 24px;
-            height: 22px;
-            padding: 0 6px;
+            min-width: 21px;
+            height: 19px;
+            padding: 0 5px;
             flex: none;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 5px;
+            border-radius: 4px;
             border: 1px solid transparent
         }
 
@@ -553,45 +655,47 @@
 
         .ttl {
             flex: 1;
-            font-weight: 500
+            font-weight: 500;
+            font-size: 14px
         }
 
         .chev {
             color: var(--ink-faint);
             font-family: var(--mono);
-            transition: transform .15s
+            transition: transform .15s;
+            font-size: 12px
         }
 
         .task.open .chev {
             transform: rotate(90deg)
         }
 
-        .body {
+        .tbody {
             display: none;
-            padding: 0 15px 16px;
+            padding: 0 13px 13px;
             border-top: 1px solid var(--line)
         }
 
-        .task.open .body {
+        .task.open .tbody {
             display: block
         }
 
         .lay {
-            margin-top: 14px
+            margin-top: 11px
         }
 
         .lay-label {
             font-family: var(--mono);
-            font-size: 10.5px;
-            letter-spacing: .13em;
+            font-size: 10px;
+            letter-spacing: .12em;
             text-transform: uppercase;
             color: var(--ink-faint);
-            margin-bottom: 6px
+            margin-bottom: 4px
         }
 
         .desc {
-            font-size: 15px;
-            line-height: 1.66
+            font-size: 14px;
+            line-height: 1.65
         }
 
         .cons {
@@ -602,19 +706,19 @@
 
         .cons li {
             position: relative;
-            padding-left: 18px;
-            margin-bottom: 6px;
+            padding-left: 15px;
+            margin-bottom: 5px;
             color: var(--ink-soft);
-            font-size: 14.5px
+            font-size: 13.5px
         }
 
         .cons li::before {
             content: '';
             position: absolute;
             left: 2px;
-            top: 9px;
-            width: 6px;
-            height: 6px;
+            top: 7px;
+            width: 5px;
+            height: 5px;
             border-radius: 50%;
             background: var(--amber)
         }
@@ -622,15 +726,15 @@
         .dev-toggle {
             display: inline-flex;
             align-items: center;
-            gap: 7px;
-            margin-top: 16px;
+            gap: 6px;
+            margin-top: 12px;
             font-family: var(--mono);
-            font-size: 11.5px;
+            font-size: 11px;
             color: var(--code-ink);
             background: var(--code-bg);
             border: 1px solid var(--line);
-            padding: 6px 11px;
-            border-radius: 7px
+            padding: 5px 9px;
+            border-radius: 6px
         }
 
         .dev-toggle:hover {
@@ -643,11 +747,11 @@
 
         .dev {
             display: none;
-            margin-top: 10px;
+            margin-top: 8px;
             background: var(--code-bg);
             border: 1px solid var(--line);
-            border-radius: 8px;
-            padding: 11px 13px
+            border-radius: 7px;
+            padding: 9px 11px
         }
 
         .task.dev-open .dev {
@@ -661,27 +765,23 @@
         .dev code {
             display: block;
             font-family: var(--mono);
-            font-size: 12px;
+            font-size: 11px;
             color: var(--code-ink);
-            line-height: 1.7;
-            margin-bottom: 5px;
+            line-height: 1.65;
+            margin-bottom: 3px;
             word-break: break-word
-        }
-
-        .dev code:last-child {
-            margin-bottom: 0
         }
 
         .rail {
             position: sticky;
-            top: 74px;
+            top: 20px;
             align-self: start;
             display: flex;
             flex-direction: column;
-            gap: 16px
+            gap: 13px
         }
 
-        @media(max-width:920px) {
+        @media(max-width:860px) {
             .rail {
                 position: static
             }
@@ -690,48 +790,49 @@
         .panel {
             background: var(--surface);
             border: 1px solid var(--line);
-            border-radius: 11px;
-            padding: 15px 16px
+            border-radius: 9px;
+            padding: 13px 14px
         }
 
-        .panel h2 {
-            font-size: 12px;
+        .panel h3 {
+            font-size: 10.5px;
             font-family: var(--mono);
             letter-spacing: .06em;
             text-transform: uppercase;
             color: var(--ink-soft);
-            margin: 0 0 11px;
+            margin: 0 0 9px;
             font-weight: 500
         }
 
         .risk {
             display: flex;
-            gap: 9px;
+            gap: 8px;
             font-size: 13px;
             color: var(--ink-soft);
             line-height: 1.5;
-            margin-bottom: 10px
+            margin-bottom: 8px
         }
 
         .risk:last-child {
             margin-bottom: 0
         }
 
-        .risk span {
+        .risk-icon {
             flex: none;
             color: var(--amber);
             font-family: var(--mono);
             margin-top: 1px
         }
 
-        @media(prefers-reduced-motion:reduce) {
-            * {
-                transition: none !important
-            }
+        .map {
+            font-family: var(--mono);
+            font-size: 11.5px;
+            color: var(--ink-soft);
+            line-height: 1.95
+        }
 
-            .spin {
-                animation: none
-            }
+        .map b {
+            color: var(--keel-deep)
         }
 
         .scrim {
@@ -751,62 +852,62 @@
 
         .modal {
             background: var(--surface);
-            border-radius: 14px;
-            max-width: 420px;
+            border-radius: 13px;
+            max-width: 400px;
             width: 100%;
-            padding: 24px 24px 20px;
+            padding: 22px 22px 18px;
             border: 1px solid var(--line)
         }
 
         .modal h3 {
-            margin: 0 0 6px;
-            font-size: 19px;
+            margin: 0 0 5px;
+            font-size: 17px;
             font-weight: 600
         }
 
         .modal p {
-            margin: 0 0 16px;
+            margin: 0 0 13px;
             color: var(--ink-soft);
-            font-size: 14px
+            font-size: 13.5px
         }
 
-        .modal .sum {
+        .msum {
             background: var(--surface-2);
             border: 1px solid var(--line);
-            border-radius: 9px;
-            padding: 12px 14px;
+            border-radius: 8px;
+            padding: 10px 13px;
             font-family: var(--mono);
-            font-size: 13px;
+            font-size: 12.5px;
             line-height: 1.9;
-            margin-bottom: 18px
+            margin-bottom: 15px
         }
 
-        .modal .sum b {
+        .msum b {
             color: var(--keel-deep)
         }
 
-        .modal .mrow {
+        .mrow {
             display: flex;
-            gap: 10px;
+            gap: 9px;
             justify-content: flex-end
         }
 
         .toast {
             position: fixed;
             left: 50%;
-            bottom: 26px;
-            transform: translateX(-50%) translateY(20px);
+            bottom: 24px;
+            transform: translateX(-50%) translateY(18px);
             background: var(--ink);
             color: #fff;
-            padding: 12px 20px;
-            border-radius: 10px;
-            font-size: 14px;
+            padding: 10px 17px;
+            border-radius: 9px;
+            font-size: 13.5px;
             opacity: 0;
             pointer-events: none;
             transition: .25s;
             z-index: 50;
             display: flex;
-            gap: 9px;
+            gap: 8px;
             align-items: center
         }
 
@@ -815,216 +916,237 @@
             transform: translateX(-50%) translateY(0)
         }
 
-        .toast .tmono {
+        .toast .tm {
             color: #8FD3CC;
-            font-size: 12px;
+            font-size: 11.5px;
             font-family: var(--mono)
+        }
+
+        @media(prefers-reduced-motion:reduce) {
+            * {
+                transition: none !important
+            }
+
+            .spin {
+                animation: none
+            }
         }
     </style>
 </head>
 
 <body>
     <header class="topbar">
-        <span class="word">KEEL</span><span class="tag-top">разбор, привязанный к коду</span>
+        <span class="word">KEEL</span>
+        <span class="tag-top">разбор требований</span>
         <div class="spacer"></div>
-        <div class="seg" id="viewSeg"><button data-v="full" class="on">код-слой</button><button data-v="analyst">для
-                аналитика</button></div>
-        <button class="btn btn-primary" id="pushBtn">Залить в трекер</button>
+        <div class="seg" id="viewSeg">
+            <button data-v="full" class="on">код-слой</button>
+            <button data-v="analyst">для аналитика</button>
+        </div>
+        <button class="btn btn-primary" id="pushBtn" disabled>Залить в трекер</button>
     </header>
-
-    <div class="wrap">
-        <div class="input-card">
-            <div class="lbl">требование</div>
-            <textarea id="reqInput"
-                placeholder="Вставьте текст требования. Если к нему есть документ — вставьте сюда и его содержимое."></textarea>
-            <div class="input-row">
-                <span class="hint">грунтовка: репозиторий из конфигурации сервера</span>
-                <button class="btn btn-primary" id="runBtn">Разобрать</button>
+    <div class="shell">
+        <aside class="sidebar">
+            <div class="sb-head">
+                <h2>Требования</h2>
             </div>
-        </div>
-
-        <div class="history" id="history" style="display:none">
-            <h2>Прошлые разборы</h2>
-            <div class="hist-list" id="histList"></div>
-        </div>
-
-        <div class="state" id="loading">
-            <div class="snippet"><span class="cap">анализирую требование</span><span class="txt" id="loadSnip"></span>
+            <div class="req-list" id="reqList">
+                <div class="empty-list">Загрузка…</div>
             </div>
-            <div class="bar"><i></i></div>
-            <div class="msg" id="loadMsg">Перечитываю код…</div>
-            <div class="elapsed" id="loadElapsed">0:00</div>
-            <div class="note">обычно занимает 1–2 минуты — оставайся на этой странице</div>
-        </div>
-        <div class="state" id="errBox">
-            <div class="error" id="errMsg"></div>
-        </div>
-
-        <div class="results" id="results">
-            <div class="context">
-                <div class="eyebrow" id="ctxEyebrow">разбор</div>
-                <h1>Сегментированное требование</h1>
-                <div class="req-echo" id="reqEcho"></div>
-                <div class="meta" id="metaLine"></div>
-            </div>
-            <div class="grid">
-                <div class="deck">
-                    <div class="spine"></div>
-                    <div id="deck"></div>
-                </div>
-                <aside class="rail">
-                    <div class="panel">
-                        <h2>Сквозные риски</h2>
-                        <div id="risks"></div>
+            <div class="new-req">
+                <button class="new-req-toggle" id="newReqToggle">＋ Новое требование</button>
+                <div class="form-hidden" id="newReqForm">
+                    <input id="nrTitle" placeholder="Название требования" maxlength="200">
+                    <textarea id="nrBody" placeholder="Текст требования…"></textarea>
+                    <div style="display:flex;gap:8px;justify-content:flex-end">
+                        <button class="btn btn-sm" id="nrCancel">Отмена</button>
+                        <button class="btn btn-sm btn-primary" id="nrSave">Создать</button>
                     </div>
-                </aside>
+                </div>
             </div>
+        </aside>
+        <main class="main" id="main">
+            <div class="welcome" id="welcome">
+                <div class="big">⚓</div>
+                <h2>Выберите требование</h2>
+                <p>Выберите требование слева или создайте новое, чтобы начать декомпозицию.</p>
+            </div>
+        </main>
+    </div>
+    <div class="scrim" id="scrim">
+        <div class="modal" role="dialog" aria-modal="true">
+            <h3>Залить в Яндекс.Трекер</h3>
+            <p>Создадим задачи по разбору. Это действие нельзя отменить.</p>
+            <div class="msum" id="modalSum"></div>
+            <div class="mrow"><button class="btn btn-sm" id="cancelPush">Отмена</button><button
+                    class="btn btn-sm btn-primary" id="confirmPush">Создать задачи</button></div>
         </div>
     </div>
-
+    <div class="toast" id="toast"></div>
     <script>
         const $ = id => document.getElementById(id);
         const esc = s => ('' + (s ?? '')).replace(/&/g, '&amp;').replace(/</g, '&lt;');
         const pad = n => String(n).padStart(2, '0');
         const sizeOf = s => { const u = ('' + (s || 'M')).toUpperCase(); return ['S', 'M', 'L'].includes(u) ? u : 'M'; };
-
-        $('runBtn').onclick = async () => {
-            const req = $('reqInput').value.trim();
-            if (!req) { $('reqInput').focus(); return; }
-            show('loading'); $('results').classList.remove('on'); $('errBox').classList.remove('on');
-            $('runBtn').disabled = true;
-            const snip = req.replace(/\s+/g, ' ').trim();
-            $('loadSnip').textContent = snip.slice(0, 180) + (snip.length > 180 ? '…' : '');
-            const msgs = ['Перечитываю код репозитория…', 'Понимаю существующую архитектуру…', 'Раскладываю по этапам и задачам…', 'Собираю риски и привязки к коду…'];
-            let i = 0; $('loadMsg').textContent = msgs[0];
-            const tick = setInterval(() => { i = (i + 1) % msgs.length; $('loadMsg').textContent = msgs[i]; }, 2500);
-            const t0 = Date.now(); $('loadElapsed').textContent = '0:00';
-            const clock = setInterval(() => { const s = Math.floor((Date.now() - t0) / 1000); $('loadElapsed').textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }, 1000);
-            try {
-                const r = await fetch('/api/decompose', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requirement: req }) });
-                if (!r.ok) throw new Error('Сервер вернул ' + r.status + ' ' + r.statusText);
-                const stored = await r.json();
-                showStored(stored); loadList();
-            } catch (e) {
-                $('errMsg').textContent = 'Не получилось разобрать.\n' + e.message + '\n\nПроверь, что приложение запущено и движок настроен (keel.engine, repo-path).';
-                show('errBox');
-            } finally { clearInterval(tick); clearInterval(clock); $('runBtn').disabled = false; }
+        const fmtDate = iso => { try { return new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
+        const showToast = (html, ms = 3200) => { const t = $('toast'); t.innerHTML = html; t.classList.add('on'); setTimeout(() => t.classList.remove('on'), ms); };
+        let state = { reqs: [], activeReqId: null, activeDecompId: null };
+        function statusBadge(s) {
+            if (s === 'DECOMPOSED') return '<span class="badge badge-decomposed">разобрано</span>';
+            if (s === 'PUSHED') return '<span class="badge badge-pushed">в трекере</span>';
+            return '<span class="badge badge-draft">черновик</span>';
+        }
+        function renderSidebar() {
+            const box = $('reqList');
+            if (!state.reqs.length) { box.innerHTML = '<div class="empty-list">Требований ещё нет.<br>Создайте первое ↓</div>'; return; }
+            box.innerHTML = state.reqs.map(r => `<div class="req-item${r.id === state.activeReqId ? ' active' : ''}" data-id="${r.id}"><div class="ri-title">${esc(r.title)}</div><div class="ri-meta">${statusBadge(r.status)}<span>${r.decompositionCount} разб.</span><span>${fmtDate(r.createdAt)}</span></div></div>`).join('');
+            box.querySelectorAll('.req-item').forEach(el => el.onclick = () => openReq(+el.dataset.id));
+        }
+        async function loadReqs() {
+            try { const r = await fetch('/api/requirements'); state.reqs = await r.json(); } catch (e) { state.reqs = []; }
+            renderSidebar();
+        }
+        $('newReqToggle').onclick = () => {
+            const f = $('newReqForm'), hidden = f.classList.contains('form-hidden');
+            f.classList.toggle('form-hidden', !hidden);
+            if (!hidden) { $('nrTitle').value = ''; $('nrBody').value = ''; } else $('nrTitle').focus();
         };
-
-        function show(which) { ['loading', 'errBox', 'results'].forEach(id => $(id).classList.toggle('on', id === which)); }
-
-        function render(result) {
-            const stages = Array.isArray(result && result.stages) ? result.stages : [];
-            const risks = Array.isArray(result && result.integrationRisks) ? result.integrationRisks : [];
-            let total = 0, sz = { S: 0, M: 0, L: 0 }, cons = 0;
-            const deck = $('deck'); deck.innerHTML = '';
-            stages.forEach((st, si) => {
+        $('nrCancel').onclick = () => { $('newReqForm').classList.add('form-hidden'); $('nrTitle').value = ''; $('nrBody').value = ''; };
+        $('nrSave').onclick = async () => {
+            const title = $('nrTitle').value.trim(), body = $('nrBody').value.trim();
+            if (!title || !body) { alert('Заполните название и текст.'); return; }
+            try {
+                const r = await fetch('/api/requirements', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, body }) });
+                if (!r.ok) throw new Error('Ошибка сервера');
+                const req = await r.json();
+                $('newReqForm').classList.add('form-hidden'); $('nrTitle').value = ''; $('nrBody').value = '';
+                await loadReqs(); openReq(req.id);
+            } catch (e) { alert('Не удалось создать: ' + e.message); }
+        };
+        async function openReq(id) {
+            state.activeReqId = id; state.activeDecompId = null; $('pushBtn').disabled = true; renderSidebar();
+            try {
+                const [rd, dd] = await Promise.all([fetch('/api/requirements/' + id), fetch('/api/requirements/' + id + '/decompositions')]);
+                const req = await rd.json(), decomps = await dd.json();
+                renderReqDetail(req, decomps);
+            } catch (e) { $('main').innerHTML = '<div class="welcome"><div class="big">⚠</div><h2>Ошибка загрузки</h2></div>'; }
+        }
+        function renderReqDetail(req, decomps) {
+            const m = $('main');
+            m.innerHTML = '<div class="req-detail" id="reqDetail"></div>';
+            const d = $('reqDetail');
+            d.innerHTML = `<div class="req-detail-head"><h1>${esc(req.title)} ${statusBadge(req.status)}</h1><button class="btn btn-sm" id="editBtn">Редактировать</button></div><div id="reqBodyWrap"><div class="req-body-text">${esc(req.body)}</div></div><div class="decompose-bar"><h2>Декомпозиция</h2><button class="btn btn-sm btn-primary" id="decomposeBtn">⚡ Разобрать</button></div><div id="loadingBox" style="display:none"></div><div id="decompHistWrap"></div><div id="resultWrap"></div>`;
+            renderDecompHistory(decomps);
+            if (decomps.length) loadDecomp(decomps[0].id);
+            $('editBtn').onclick = () => startEdit(req);
+            $('decomposeBtn').onclick = () => runDecompose(req);
+        }
+        function renderDecompHistory(decomps) {
+            const w = $('decompHistWrap'); if (!w) return;
+            if (!decomps.length) { w.innerHTML = '<div style="color:var(--ink-faint);font-size:13.5px;margin-bottom:18px">Разборов ещё нет. Нажмите «Разобрать».</div>'; return; }
+            w.innerHTML = '<div class="decomp-history"><div class="dh-label">История разборов</div>' + decomps.map(d => `<div class="dh-item${d.id === state.activeDecompId ? ' active' : ''}" data-id="${d.id}"><div class="dh-meta">${fmtDate(d.createdAt)}</div><div class="dh-counts">${d.stageCount} эт. · ${d.taskCount} зад.</div></div>`).join('') + '</div>';
+            w.querySelectorAll('.dh-item').forEach(el => el.onclick = () => loadDecomp(+el.dataset.id));
+        }
+        function startEdit(req) {
+            const w = $('reqBodyWrap');
+            w.innerHTML = `<div class="req-edit-form"><input id="editTitle" value="${esc(req.title)}"><textarea id="editBody">${esc(req.body)}</textarea><div class="req-edit-actions"><button class="btn btn-sm" id="editCancel">Отмена</button><button class="btn btn-sm btn-primary" id="editSave">Сохранить</button></div></div>`;
+            $('editCancel').onclick = () => { w.innerHTML = '<div class="req-body-text">' + esc(req.body) + '</div>'; };
+            $('editSave').onclick = async () => {
+                const title = $('editTitle').value.trim(), body = $('editBody').value.trim();
+                if (!title || !body) { alert('Заполните оба поля.'); return; }
+                try {
+                    const r = await fetch('/api/requirements/' + req.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, body }) });
+                    if (!r.ok) throw new Error('Ошибка');
+                    await loadReqs(); openReq(req.id);
+                } catch (e) { alert('Не удалось сохранить: ' + e.message); }
+            };
+        }
+        async function runDecompose(req) {
+            const lb = $('loadingBox'); if (!lb) return;
+            lb.style.display = 'block';
+            lb.innerHTML = '<div class="loading-box"><div class="spin"></div><div class="loading-snip">' + esc(req.body.slice(0, 140) + (req.body.length > 140 ? '…' : '')) + '</div><div class="loading-msg" id="lMsg">Перечитываю код репозитория…</div><div class="loading-elapsed" id="lEl">0:00</div><div style="font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin-top:5px">обычно 1–2 минуты</div></div>';
+            const db = $('decomposeBtn'); if (db) db.disabled = true;
+            const msgs = ['Перечитываю код репозитория…', 'Понимаю архитектуру…', 'Раскладываю по этапам…', 'Собираю риски и привязки…'];
+            let mi = 0;
+            const tick = setInterval(() => { mi = (mi + 1) % msgs.length; const m = $('lMsg'); if (m) m.textContent = msgs[mi]; }, 2500);
+            const t0 = Date.now();
+            const clock = setInterval(() => { const el = $('lEl'); if (!el) return; const s = Math.floor((Date.now() - t0) / 1000); el.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }, 1000);
+            try {
+                const r = await fetch('/api/decompose', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requirement: req.body, requirementId: req.id }) });
+                if (!r.ok) { const b = await r.json(); throw new Error(b.message || 'Ошибка сервера'); }
+                const stored = await r.json();
+                state.activeDecompId = stored.id;
+                await loadReqs();
+                const dd = await fetch('/api/requirements/' + req.id + '/decompositions');
+                renderDecompHistory(await dd.json());
+                renderResult(stored.result);
+                $('pushBtn').disabled = false;
+                const cnt = stored.result.stages.reduce((s, st) => s + (st.items?.length || 0), 0);
+                showToast('Разбор готов <span class="tm">' + stored.result.stages.length + ' эт. · ' + cnt + ' зад.</span>');
+            } catch (e) {
+                if (lb) lb.innerHTML = '<div class="loading-box" style="background:var(--amber-tint);border-color:var(--amber)"><div style="color:var(--amber);font-family:var(--mono);font-size:13px">' + esc(e.message) + '</div></div>';
+            } finally {
+                clearInterval(tick); clearInterval(clock);
+                const db2 = $('decomposeBtn'); if (db2) db2.disabled = false;
+                if (lb) setTimeout(() => { if (lb.style) lb.style.display = 'none'; }, 3000);
+            }
+        }
+        async function loadDecomp(id) {
+            state.activeDecompId = id;
+            document.querySelectorAll('.dh-item').forEach(el => el.classList.toggle('active', +el.dataset.id === id));
+            try {
+                const r = await fetch('/api/decompositions/' + id);
+                const stored = await r.json();
+                renderResult(stored.result);
+                $('pushBtn').disabled = false;
+            } catch (e) { console.error(e); }
+        }
+        function renderResult(result) {
+            const w = $('resultWrap'); if (!w) return;
+            const stages = Array.isArray(result?.stages) ? result.stages : [];
+            const risks = Array.isArray(result?.integrationRisks) ? result.integrationRisks : [];
+            let total = 0, sz = { S: 0, M: 0, L: 0 };
+            const deckHtml = stages.map((st, si) => {
                 const items = Array.isArray(st.items) ? st.items : [];
-                const el = document.createElement('div'); el.className = 'stage';
-                let html = `<div class="node">${pad(si + 1)}</div><div class="stage-head"><div class="stage-title">${esc(st.title)}</div><div class="stage-count">${items.length} зад.</div></div>`;
-                items.forEach(t => {
+                const tasksHtml = items.map(t => {
                     total++; const s = sizeOf(t.size); sz[s]++;
-                    const cs = Array.isArray(t.considerations) ? t.considerations : []; cons += cs.length;
+                    const cs = Array.isArray(t.considerations) ? t.considerations : [];
                     const dv = Array.isArray(t.devNotes) ? t.devNotes : [];
-                    html += `<div class="task">
-             <div class="thead"><span class="chip ${s}">${s}</span><span class="ttl">${esc(t.title)}</span><span class="chev">›</span></div>
-             <div class="body">
-               <div class="lay"><div class="lay-label">описание</div><div class="desc">${esc(t.description)}</div></div>
-               ${cs.length ? `<div class="lay"><div class="lay-label">что учесть</div><ul class="cons">${cs.map(c => `<li>${esc(c)}</li>`).join('')}</ul></div>` : ''}
-               ${dv.length ? `<button class="dev-toggle">⌄ для разработчика · ${dv.length}</button><div class="dev">${dv.map(d => `<code>${esc(d)}</code>`).join('')}</div>` : ''}
-             </div></div>`;
-                });
-                el.innerHTML = html; deck.appendChild(el);
-            });
-            deck.querySelectorAll('.task').forEach(el => {
+                    return '<div class="task"><div class="thead"><span class="chip ' + s + '">' + s + '</span><span class="ttl">' + esc(t.title) + '</span><span class="chev">›</span></div><div class="tbody"><div class="lay"><div class="lay-label">описание</div><div class="desc">' + esc(t.description || '') + '</div></div>' + (cs.length ? '<div class="lay"><div class="lay-label">что учесть</div><ul class="cons">' + cs.map(c => '<li>' + esc(c) + '</li>').join('') + '</ul></div>' : '') + (dv.length ? '<button class="dev-toggle">⌄ для разработчика · ' + dv.length + '</button><div class="dev">' + dv.map(d => '<code>' + esc(d) + '</code>').join('') + '</div>' : '') + '</div></div>';
+                }).join('');
+                return '<div class="stage"><div class="node">' + pad(si + 1) + '</div><div class="stage-head"><div class="stage-title">' + esc(st.title) + '</div><div class="stage-count">' + items.length + ' зад.</div></div>' + tasksHtml + '</div>';
+            }).join('');
+            w.innerHTML = '<div style="font-family:var(--mono);font-size:12px;color:var(--ink-soft);margin-bottom:14px">' + stages.length + ' этапов · ' + total + ' задач · S ' + sz.S + ' / M ' + sz.M + ' / L ' + sz.L + '</div><div class="result-wrap"><div class="deck"><div class="spine"></div>' + deckHtml + '</div><aside class="rail"><div class="panel"><h3>Сквозные риски</h3>' + (risks.map(r => '<div class="risk"><span class="risk-icon">!</span><div>' + esc(r) + '</div></div>').join('') || '<div style="color:var(--ink-faint);font-size:13px">рисков не выделено</div>') + '</div><div class="panel"><h3>В трекер</h3><div class="map">этап → <b>родит. задача</b><br>задача → <b>дочерняя</b><br>размер → <b>тег</b></div></div></aside></div>';
+            w.querySelectorAll('.task').forEach(el => {
                 el.querySelector('.thead').addEventListener('click', () => el.classList.toggle('open'));
                 const dt = el.querySelector('.dev-toggle'); if (dt) dt.addEventListener('click', e => { e.stopPropagation(); el.classList.toggle('dev-open'); });
             });
-            $('risks').innerHTML = risks.length ? risks.map(r => `<div class="risk"><span>!</span><div>${esc(r)}</div></div>`).join('') : '<div class="risk"><div style="color:var(--ink-faint)">рисков не выделено</div></div>';
-            $('metaLine').innerHTML = `${stages.length} этапов&nbsp;·&nbsp;${total} задач&nbsp;·&nbsp;S ${sz.S} / M ${sz.M} / L ${sz.L}&nbsp;·&nbsp;«что учесть»: ${cons}`;
         }
-
-        let currentId = null;
-        function fmtDate(iso) { try { return new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
-        function markActive() { document.querySelectorAll('.hist-item').forEach(b => b.classList.toggle('active', Number(b.dataset.id) === currentId)); }
-
-        function showStored(stored, push) {
-            currentId = stored.id;
-            $('ctxEyebrow').textContent = 'разбор #' + stored.id + (stored.createdAt ? ' · ' + fmtDate(stored.createdAt) : '');
-            const req = (stored.requirement || '').replace(/\s+/g, ' ').trim();
-            $('reqEcho').textContent = req.slice(0, 240) + (req.length > 240 ? '…' : '');
-            render(stored.result || {});
-            show('results'); markActive();
-            if (push !== false) { try { history.pushState({ id: stored.id }, '', '?id=' + stored.id); } catch (e) { } }
-        }
-
-        async function loadList() {
-            try {
-                const r = await fetch('/api/decompositions'); if (!r.ok) return;
-                const list = await r.json(); const box = $('histList');
-                if (!Array.isArray(list) || !list.length) { $('history').style.display = 'none'; return; }
-                $('history').style.display = '';
-                box.innerHTML = list.map(it => '<button class="hist-item" data-id="' + it.id + '"><span class="h-req">' + esc(it.requirementPreview || '(без текста)') + '</span><span class="h-meta">' + (it.taskCount || 0) + ' зад. · ' + fmtDate(it.createdAt) + '</span></button>').join('');
-                box.querySelectorAll('.hist-item').forEach(b => b.onclick = () => openId(Number(b.dataset.id)));
-                markActive();
-            } catch (e) { }
-        }
-
-        async function openId(id, push) {
-            show('loading'); $('loadSnip').textContent = 'Открываю сохранённый разбор #' + id; $('loadMsg').textContent = 'Загружаю из базы…'; $('loadElapsed').textContent = '';
-            try {
-                const r = await fetch('/api/decompositions/' + id);
-                if (r.status === 404) throw new Error('Разбор #' + id + ' не найден.');
-                if (!r.ok) throw new Error('Сервер вернул ' + r.status);
-                showStored(await r.json(), push);
-            } catch (e) { $('errMsg').textContent = e.message; show('errBox'); }
-        }
-
-        window.addEventListener('popstate', () => { const id = new URLSearchParams(location.search).get('id'); if (id) { openId(Number(id), false); } else { currentId = null; show('home'); markActive(); } });
-
-        loadList();
-        (function () { const id = new URLSearchParams(location.search).get('id'); if (id) openId(Number(id), false); })();
-
         document.querySelectorAll('#viewSeg button').forEach(b => b.addEventListener('click', () => {
             document.querySelectorAll('#viewSeg button').forEach(x => x.classList.remove('on'));
             b.classList.add('on'); document.body.classList.toggle('analyst', b.dataset.v === 'analyst');
         }));
-
-        document.addEventListener('DOMContentLoaded', () => {
-            const pushBtn = $('pushBtn');
-            pushBtn.onclick = () => {
-                if (!currentId) { alert('Сначала разберите требование или откройте сохранённый разбор.'); return; }
-                $('modalId').textContent = '#' + currentId;
-                $('scrim').classList.add('on');
-            };
-            $('cancelPush').onclick = () => $('scrim').classList.remove('on');
-            $('scrim').onclick = e => { if (e.target === $('scrim')) $('scrim').classList.remove('on'); };
-            $('confirmPush').onclick = async () => {
-                $('scrim').classList.remove('on');
-                pushBtn.disabled = true; pushBtn.textContent = 'Заливаю…';
-                try {
-                    const r = await fetch('/api/decompositions/' + currentId + '/push-to-tracker', { method: 'POST' });
-                    const body = await r.json();
-                    if (!r.ok) throw new Error(body.message || 'Ошибка трекера');
-                    const t = $('toast');
-                    t.innerHTML = 'Залито в трекер <span class="tmono">' + body.epicsCreated + ' эт. · ' + body.tasksCreated + ' зад.</span>';
-                    t.classList.add('on'); setTimeout(() => t.classList.remove('on'), 3500);
-                } catch (e) { alert('Не удалось залить в трекер:\n' + e.message); }
-                finally { pushBtn.disabled = false; pushBtn.textContent = 'Залить в трекер'; }
-            };
-        });
+        $('pushBtn').onclick = () => {
+            if (!state.activeDecompId) return;
+            $('modalSum').innerHTML = 'разбор <b>#' + state.activeDecompId + '</b><br>этапы → родительские задачи<br>задачи → дочерние с тегом размера';
+            $('scrim').classList.add('on');
+        };
+        $('cancelPush').onclick = () => $('scrim').classList.remove('on');
+        $('scrim').onclick = e => { if (e.target === $('scrim')) $('scrim').classList.remove('on'); };
+        $('confirmPush').onclick = async () => {
+            $('scrim').classList.remove('on');
+            const btn = $('pushBtn'); btn.disabled = true; btn.textContent = 'Заливаю…';
+            try {
+                const r = await fetch('/api/decompositions/' + state.activeDecompId + '/push-to-tracker', { method: 'POST' });
+                const body = await r.json();
+                if (!r.ok) throw new Error(body.message || 'Ошибка трекера');
+                showToast('Залито в трекер <span class="tm">' + body.epicsCreated + ' эт. · ' + body.tasksCreated + ' зад.</span>');
+                if (state.activeReqId) await loadReqs();
+            } catch (e) { alert('Не удалось залить:\n' + e.message); }
+            finally { btn.disabled = false; btn.textContent = 'Залить в трекер'; }
+        };
+        loadReqs();
     </script>
-    <div class="scrim" id="scrim">
-        <div class="modal" role="dialog" aria-modal="true">
-            <h3>Залить в Яндекс.Трекер</h3>
-            <p>Создадим задачи по разбору. Это действие нельзя отменить.</p>
-            <div class="sum">разбор <b id="modalId"></b><br>этапы → родительские задачи<br>задачи → дочерние с тегом
-                размера</div>
-            <div class="mrow"><button class="btn" id="cancelPush">Отмена</button><button class="btn btn-primary"
-                    id="confirmPush">Создать задачи</button></div>
-        </div>
-    </div>
-    <div class="toast" id="toast"></div>
 </body>
 
 </html>

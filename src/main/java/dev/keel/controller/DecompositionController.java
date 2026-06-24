@@ -5,6 +5,8 @@ import dev.keel.service.DecompositionService;
 import dev.keel.store.DecompositionStorageService;
 import dev.keel.store.DecompositionSummary;
 import dev.keel.store.StoredDecompositionResponse;
+import dev.keel.tracker.TrackerPushResult;
+import dev.keel.tracker.TrackerService;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,13 +21,16 @@ public class DecompositionController {
 
     private final DecompositionService decompositionService;
     private final DecompositionStorageService decompositionStorageService;
+    private final TrackerService trackerService;
 
     public DecompositionController(
             DecompositionService decompositionService,
-            DecompositionStorageService decompositionStorageService
+            DecompositionStorageService decompositionStorageService,
+            TrackerService trackerService
     ) {
         this.decompositionService = decompositionService;
         this.decompositionStorageService = decompositionStorageService;
+        this.trackerService = trackerService;
     }
 
     @PostMapping("/decompose")
@@ -41,5 +46,10 @@ public class DecompositionController {
     @GetMapping("/decompositions/{id}")
     public StoredDecompositionResponse getDecomposition(@PathVariable Long id) {
         return decompositionStorageService.findById(id);
+    }
+
+    @PostMapping("/decompositions/{id}/push-to-tracker")
+    public TrackerPushResult pushToTracker(@PathVariable Long id) {
+        return trackerService.pushDecomposition(id);
     }
 }

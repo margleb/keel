@@ -1,5 +1,11 @@
 keel:
   engine: codex
+  tracker:
+    enabled: false
+    token: ""
+    org-id: ""
+    queue: "TRACKER"
+    org-type: cloud
   codex:
     command:
       - codex

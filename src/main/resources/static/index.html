@@ -990,27 +990,29 @@
             b.classList.add('on'); document.body.classList.toggle('analyst', b.dataset.v === 'analyst');
         }));
 
-        const pushBtn = $('pushBtn');
-        pushBtn.onclick = () => {
-            if (!currentId) { alert('Сначала разберите требование или откройте сохранённый разбор.'); return; }
-            $('modalId').textContent = '#' + currentId;
-            $('scrim').classList.add('on');
-        };
-        $('cancelPush').onclick = () => $('scrim').classList.remove('on');
-        $('scrim').onclick = e => { if (e.target === $('scrim')) $('scrim').classList.remove('on'); };
-        $('confirmPush').onclick = async () => {
-            $('scrim').classList.remove('on');
-            pushBtn.disabled = true; pushBtn.textContent = 'Заливаю…';
-            try {
-                const r = await fetch('/api/decompositions/' + currentId + '/push-to-tracker', { method: 'POST' });
-                const body = await r.json();
-                if (!r.ok) throw new Error(body.message || 'Ошибка трекера');
-                const t = $('toast');
-                t.innerHTML = 'Залито в трекер <span class="tmono">' + body.epicsCreated + ' эт. · ' + body.tasksCreated + ' зад.</span>';
-                t.classList.add('on'); setTimeout(() => t.classList.remove('on'), 3500);
-            } catch (e) { alert('Не удалось залить в трекер:\n' + e.message); }
-            finally { pushBtn.disabled = false; pushBtn.textContent = 'Залить в трекер'; }
-        };
+        document.addEventListener('DOMContentLoaded', () => {
+            const pushBtn = $('pushBtn');
+            pushBtn.onclick = () => {
+                if (!currentId) { alert('Сначала разберите требование или откройте сохранённый разбор.'); return; }
+                $('modalId').textContent = '#' + currentId;
+                $('scrim').classList.add('on');
+            };
+            $('cancelPush').onclick = () => $('scrim').classList.remove('on');
+            $('scrim').onclick = e => { if (e.target === $('scrim')) $('scrim').classList.remove('on'); };
+            $('confirmPush').onclick = async () => {
+                $('scrim').classList.remove('on');
+                pushBtn.disabled = true; pushBtn.textContent = 'Заливаю…';
+                try {
+                    const r = await fetch('/api/decompositions/' + currentId + '/push-to-tracker', { method: 'POST' });
+                    const body = await r.json();
+                    if (!r.ok) throw new Error(body.message || 'Ошибка трекера');
+                    const t = $('toast');
+                    t.innerHTML = 'Залито в трекер <span class="tmono">' + body.epicsCreated + ' эт. · ' + body.tasksCreated + ' зад.</span>';
+                    t.classList.add('on'); setTimeout(() => t.classList.remove('on'), 3500);
+                } catch (e) { alert('Не удалось залить в трекер:\n' + e.message); }
+                finally { pushBtn.disabled = false; pushBtn.textContent = 'Залить в трекер'; }
+            };
+        });
     </script>
     <div class="scrim" id="scrim">
         <div class="modal" role="dialog" aria-modal="true">

@@ -733,6 +733,93 @@
                 animation: none
             }
         }
+
+        .scrim {
+            position: fixed;
+            inset: 0;
+            background: rgba(16, 28, 30, .42);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 40;
+            padding: 20px
+        }
+
+        .scrim.on {
+            display: flex
+        }
+
+        .modal {
+            background: var(--surface);
+            border-radius: 14px;
+            max-width: 420px;
+            width: 100%;
+            padding: 24px 24px 20px;
+            border: 1px solid var(--line)
+        }
+
+        .modal h3 {
+            margin: 0 0 6px;
+            font-size: 19px;
+            font-weight: 600
+        }
+
+        .modal p {
+            margin: 0 0 16px;
+            color: var(--ink-soft);
+            font-size: 14px
+        }
+
+        .modal .sum {
+            background: var(--surface-2);
+            border: 1px solid var(--line);
+            border-radius: 9px;
+            padding: 12px 14px;
+            font-family: var(--mono);
+            font-size: 13px;
+            line-height: 1.9;
+            margin-bottom: 18px
+        }
+
+        .modal .sum b {
+            color: var(--keel-deep)
+        }
+
+        .modal .mrow {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end
+        }
+
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: 26px;
+            transform: translateX(-50%) translateY(20px);
+            background: var(--ink);
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            opacity: 0;
+            pointer-events: none;
+            transition: .25s;
+            z-index: 50;
+            display: flex;
+            gap: 9px;
+            align-items: center
+        }
+
+        .toast.on {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0)
+        }
+
+        .toast .tmono {
+            color: #8FD3CC;
+            font-size: 12px;
+            font-family: var(--mono)
+        }
     </style>
 </head>
 
@@ -742,7 +829,7 @@
         <div class="spacer"></div>
         <div class="seg" id="viewSeg"><button data-v="full" class="on">код-слой</button><button data-v="analyst">для
                 аналитика</button></div>
-        <button class="btn btn-primary" disabled title="скоро">Залить в трекер<span class="soon">скоро</span></button>
+        <button class="btn btn-primary" id="pushBtn">Залить в трекер</button>
     </header>
 
     <div class="wrap">
@@ -800,18 +887,6 @@
         const esc = s => ('' + (s ?? '')).replace(/&/g, '&amp;').replace(/</g, '&lt;');
         const pad = n => String(n).padStart(2, '0');
         const sizeOf = s => { const u = ('' + (s || 'M')).toUpperCase(); return ['S', 'M', 'L'].includes(u) ? u : 'M'; };
-        async function errorMessage(r, fallback) {
-            try {
-                const type = r.headers.get('content-type') || '';
-                if (type.includes('application/json')) {
-                    const body = await r.json();
-                    if (body && body.message) return body.message;
-                }
-                const text = await r.text();
-                if (text.trim()) return text.trim();
-            } catch (e) { }
-            return fallback || ('Сервер вернул ошибку ' + r.status + '.');
-        }
 
         $('runBtn').onclick = async () => {
             const req = $('reqInput').value.trim();
@@ -827,7 +902,7 @@
             const clock = setInterval(() => { const s = Math.floor((Date.now() - t0) / 1000); $('loadElapsed').textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }, 1000);
             try {
                 const r = await fetch('/api/decompose', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requirement: req }) });
-                if (!r.ok) throw new Error(await errorMessage(r, 'Сервер вернул ошибку ' + r.status + '.'));
+                if (!r.ok) throw new Error('Сервер вернул ' + r.status + ' ' + r.statusText);
                 const stored = await r.json();
                 showStored(stored); loadList();
             } catch (e) {
@@ -899,7 +974,8 @@
             show('loading'); $('loadSnip').textContent = 'Открываю сохранённый разбор #' + id; $('loadMsg').textContent = 'Загружаю из базы…'; $('loadElapsed').textContent = '';
             try {
                 const r = await fetch('/api/decompositions/' + id);
-                if (!r.ok) throw new Error(await errorMessage(r, 'Сервер вернул ошибку ' + r.status + '.'));
+                if (r.status === 404) throw new Error('Разбор #' + id + ' не найден.');
+                if (!r.ok) throw new Error('Сервер вернул ' + r.status);
                 showStored(await r.json(), push);
             } catch (e) { $('errMsg').textContent = e.message; show('errBox'); }
         }
@@ -913,7 +989,40 @@
             document.querySelectorAll('#viewSeg button').forEach(x => x.classList.remove('on'));
             b.classList.add('on'); document.body.classList.toggle('analyst', b.dataset.v === 'analyst');
         }));
+
+        const pushBtn = $('pushBtn');
+        pushBtn.onclick = () => {
+            if (!currentId) { alert('Сначала разберите требование или откройте сохранённый разбор.'); return; }
+            $('modalId').textContent = '#' + currentId;
+            $('scrim').classList.add('on');
+        };
+        $('cancelPush').onclick = () => $('scrim').classList.remove('on');
+        $('scrim').onclick = e => { if (e.target === $('scrim')) $('scrim').classList.remove('on'); };
+        $('confirmPush').onclick = async () => {
+            $('scrim').classList.remove('on');
+            pushBtn.disabled = true; pushBtn.textContent = 'Заливаю…';
+            try {
+                const r = await fetch('/api/decompositions/' + currentId + '/push-to-tracker', { method: 'POST' });
+                const body = await r.json();
+                if (!r.ok) throw new Error(body.message || 'Ошибка трекера');
+                const t = $('toast');
+                t.innerHTML = 'Залито в трекер <span class="tmono">' + body.epicsCreated + ' эт. · ' + body.tasksCreated + ' зад.</span>';
+                t.classList.add('on'); setTimeout(() => t.classList.remove('on'), 3500);
+            } catch (e) { alert('Не удалось залить в трекер:\n' + e.message); }
+            finally { pushBtn.disabled = false; pushBtn.textContent = 'Залить в трекер'; }
+        };
     </script>
+    <div class="scrim" id="scrim">
+        <div class="modal" role="dialog" aria-modal="true">
+            <h3>Залить в Яндекс.Трекер</h3>
+            <p>Создадим задачи по разбору. Это действие нельзя отменить.</p>
+            <div class="sum">разбор <b id="modalId"></b><br>этапы → родительские задачи<br>задачи → дочерние с тегом
+                размера</div>
+            <div class="mrow"><button class="btn" id="cancelPush">Отмена</button><button class="btn btn-primary"
+                    id="confirmPush">Создать задачи</button></div>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
 </body>
 
 </html>

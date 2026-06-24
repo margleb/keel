@@ -1,11 +1,11 @@
 keel:
   engine: codex
   tracker:
-    enabled: false
-    token: ""
-    org-id: ""
-    queue: "TRACKER"
-    org-type: cloud
+    enabled: ${KEEL_TRACKER_ENABLED:false}
+    token: ${KEEL_TRACKER_TOKEN:}
+    org-id: ${KEEL_TRACKER_ORG_ID:}
+    queue: ${KEEL_TRACKER_QUEUE:TRACKER}
+    org-type: ${KEEL_TRACKER_ORG_TYPE:cloud}
   codex:
     command:
       - codex

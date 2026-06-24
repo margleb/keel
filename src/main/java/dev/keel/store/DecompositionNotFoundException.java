@@ -7,6 +7,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 public class DecompositionNotFoundException extends RuntimeException {
 
     public DecompositionNotFoundException(Long id) {
-        super("Decomposition not found: " + id);
+        super("Разбор #" + id + " не найден.");
     }
 }

@@ -5,6 +5,7 @@ keel:
     api-key: ${KEEL_LLM_API_KEY:}
     model: ${KEEL_LLM_MODEL:codex-mini-latest}
     base-url: ${KEEL_LLM_BASE_URL:}
+    repo-path: ${KEEL_REPO_PATH:}
   tracker:
     enabled: ${KEEL_TRACKER_ENABLED:false}
     token: ${KEEL_TRACKER_TOKEN:}

@@ -11,6 +11,7 @@ public class LlmProperties {
     private String apiKey = "";
     private String model = "codex-mini-latest";
     private String baseUrl = "";
+    private String repoPath = "";
 
     public String getProvider() {
         return provider;
@@ -42,5 +43,13 @@ public class LlmProperties {
 
     public void setBaseUrl(String baseUrl) {
         this.baseUrl = baseUrl;
+    }
+
+    public String getRepoPath() {
+        return repoPath;
+    }
+
+    public void setRepoPath(String repoPath) {
+        this.repoPath = repoPath;
     }
 }

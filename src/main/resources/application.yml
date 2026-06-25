@@ -1,5 +1,10 @@
 keel:
-  engine: codex
+  engine: ${KEEL_ENGINE:codex}
+  llm:
+    provider: ${KEEL_LLM_PROVIDER:openai}
+    api-key: ${KEEL_LLM_API_KEY:}
+    model: ${KEEL_LLM_MODEL:codex-mini-latest}
+    base-url: ${KEEL_LLM_BASE_URL:}
   tracker:
     enabled: ${KEEL_TRACKER_ENABLED:false}
     token: ${KEEL_TRACKER_TOKEN:}

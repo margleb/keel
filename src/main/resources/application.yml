@@ -11,7 +11,7 @@ keel:
       - codex
       - exec
       - "-"
-    repo-path: /home/margleb/projects/ranhigs/www
+    repo-path: ${KEEL_REPO_PATH:/home/margleb/projects/ranhigs/www}
 
 spring:
   datasource:

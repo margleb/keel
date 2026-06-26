@@ -65,6 +65,9 @@ public class LlmApiDecompositionEngine implements DecompositionEngine {
             default -> throw new IllegalStateException("keel.llm.provider must be openai or anthropic");
         };
 
+        LOGGER.info("Raw LLM response (first 500 chars): {}",
+                responseText.substring(0, Math.min(500, responseText.length())));
+
         // вырезать всё до первой { — Claude иногда добавляет текст перед JSON
         String json = extractJson(responseText);
 
@@ -264,7 +267,8 @@ public class LlmApiDecompositionEngine implements DecompositionEngine {
         return CompletableFuture.supplyAsync(() -> {
             List<String> lines = new ArrayList<>();
 
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     if (lines.size() < maxLines) {
@@ -356,7 +360,7 @@ public class LlmApiDecompositionEngine implements DecompositionEngine {
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("model", requireNonBlank(properties.getModel(), "keel.llm.model"));
-        body.put("max_tokens", 8096);
+        body.put("max_tokens", 16000);
         body.put("messages", List.of(message));
 
         String responseBody = restClient.post()

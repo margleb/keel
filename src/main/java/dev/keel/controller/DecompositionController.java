@@ -7,6 +7,9 @@ import dev.keel.store.DecompositionSummary;
 import dev.keel.store.StoredDecompositionResponse;
 import dev.keel.tracker.TrackerPushResult;
 import dev.keel.tracker.TrackerService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api")
+@Tag(name = "Разборы")
 public class DecompositionController {
 
     private final DecompositionService decompositionService;
@@ -34,21 +38,27 @@ public class DecompositionController {
     }
 
     @PostMapping("/decompose")
+    @Operation(description = "Запустить разбор требования.")
     public StoredDecompositionResponse decompose(@RequestBody DecompositionRequest request) {
         return decompositionService.decompose(request.requirement(), request.requirementId());
     }
 
     @GetMapping("/decompositions")
+    @Operation(description = "Получить последние разборы.")
     public List<DecompositionSummary> listDecompositions() {
         return decompositionStorageService.listRecent();
     }
 
     @GetMapping("/decompositions/{id}")
+    @Operation(description = "Получить разбор по идентификатору.")
+    @ApiResponse(responseCode = "404", description = "Разбор не найден.")
     public StoredDecompositionResponse getDecomposition(@PathVariable Long id) {
         return decompositionStorageService.findById(id);
     }
 
     @PostMapping("/decompositions/{id}/push-to-tracker")
+    @Operation(description = "Отправить разбор в трекер.")
+    @ApiResponse(responseCode = "404", description = "Разбор не найден.")
     public TrackerPushResult pushToTracker(@PathVariable Long id) {
         return trackerService.pushDecomposition(id);
     }

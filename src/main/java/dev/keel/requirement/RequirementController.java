@@ -2,6 +2,9 @@ package dev.keel.requirement;
 
 import dev.keel.store.DecompositionStorageService;
 import dev.keel.store.DecompositionSummary;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -16,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/requirements")
+@Tag(name = "Требования")
 public class RequirementController {
 
     private final RequirementService requirementService;
@@ -30,12 +34,15 @@ public class RequirementController {
     }
 
     @GetMapping
+    @Operation(description = "Получить список требований.")
     public List<RequirementSummary> listRequirements() {
         return requirementService.listAll();
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @Operation(description = "Создать новое требование.")
+    @ApiResponse(responseCode = "201", description = "Требование создано.")
     public RequirementDetail createRequirement(@Valid @RequestBody RequirementCreateRequest request) {
         Requirement requirement = requirementService.create(request);
 
@@ -43,11 +50,15 @@ public class RequirementController {
     }
 
     @GetMapping("/{id}")
+    @Operation(description = "Получить требование по идентификатору.")
+    @ApiResponse(responseCode = "404", description = "Требование не найдено.")
     public RequirementDetail getRequirement(@PathVariable Long id) {
         return requirementService.findById(id);
     }
 
     @PutMapping("/{id}")
+    @Operation(description = "Обновить требование по идентификатору.")
+    @ApiResponse(responseCode = "404", description = "Требование не найдено.")
     public RequirementDetail updateRequirement(
             @PathVariable Long id,
             @Valid @RequestBody RequirementUpdateRequest request
@@ -58,6 +69,8 @@ public class RequirementController {
     }
 
     @GetMapping("/{id}/decompositions")
+    @Operation(description = "Получить разборы для требования.")
+    @ApiResponse(responseCode = "404", description = "Требование не найдено.")
     public List<DecompositionSummary> listDecompositions(@PathVariable Long id) {
         requirementService.findById(id);
 

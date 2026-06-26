@@ -20,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -57,7 +58,7 @@ public class LlmApiDecompositionEngine implements DecompositionEngine {
 
     @Override
     public DecompositionResult decompose(String requirement) {
-        String repoContext = buildRepoContext(properties.getRepoPath(), requirement);
+        String repoContext = buildRepoContextForRequirement(requirement);
         String prompt = buildPrompt(requirement, repoContext);
         String responseText = switch (provider()) {
             case "openai" -> callOpenAi(prompt);
@@ -89,6 +90,74 @@ public class LlmApiDecompositionEngine implements DecompositionEngine {
         return text.substring(start, end + 1);
     }
 
+    private String buildRepoContextForRequirement(String requirement) {
+        List<LlmProperties.RepoConfig> repos = properties.getRepos();
+        if (hasConfiguredRepoPaths(repos)) {
+            return buildTaggedRepoContext(repos, requirement);
+        }
+
+        return buildRepoContext(properties.getRepoPath(), requirement);
+    }
+
+    private boolean hasConfiguredRepoPaths(List<LlmProperties.RepoConfig> repos) {
+        if (repos == null || repos.isEmpty()) {
+            return false;
+        }
+
+        return repos.stream()
+                .anyMatch(repoConfig -> repoConfig != null
+                        && repoConfig.getPath() != null
+                        && !repoConfig.getPath().isBlank());
+    }
+
+    private String buildTaggedRepoContext(List<LlmProperties.RepoConfig> repos, String requirement) {
+        StringBuilder context = new StringBuilder();
+
+        repos.stream()
+                .filter(repoConfig -> repoConfig != null)
+                .sorted(Comparator.comparingInt(LlmProperties.RepoConfig::getOrder))
+                .forEach(repoConfig -> appendTaggedRepoContext(context, repoConfig, requirement));
+
+        return context.toString().trim();
+    }
+
+    private void appendTaggedRepoContext(
+            StringBuilder context,
+            LlmProperties.RepoConfig repoConfig,
+            String requirement
+    ) {
+        String tag = repoTag(repoConfig);
+        String repoPath = repoConfig.getPath();
+
+        if (repoPath == null || repoPath.isBlank()) {
+            LOGGER.warn("Repository context path for [{}] is blank; skipping", tag);
+            return;
+        }
+
+        Path repo = Path.of(repoPath).toAbsolutePath().normalize();
+        if (!Files.isDirectory(repo)) {
+            LOGGER.warn("Repository context path for [{}] does not point to an existing directory: {}", tag, repo);
+            return;
+        }
+
+        if (context.length() > 0) {
+            context.append("\n\n");
+        }
+
+        context.append("=== КОДОВАЯ БАЗА [").append(tag).append("] ===\n");
+        appendFileStructure(context, repo);
+        appendRoutingFiles(context, repo, tag);
+        appendRequirementFiles(context, repo, requirement, tag);
+    }
+
+    private String repoTag(LlmProperties.RepoConfig repoConfig) {
+        if (repoConfig.getTag() == null || repoConfig.getTag().isBlank()) {
+            return "Без тега";
+        }
+
+        return repoConfig.getTag().trim();
+    }
+
     private String buildRepoContext(String repoPath) {
         return buildRepoContext(repoPath, "");
     }
@@ -105,9 +174,10 @@ public class LlmApiDecompositionEngine implements DecompositionEngine {
         }
 
         StringBuilder context = new StringBuilder();
+        context.append("=== КОДОВАЯ БАЗА ===\n");
         appendFileStructure(context, repo);
-        appendRoutingFiles(context, repo);
-        appendRequirementFiles(context, repo, requirement);
+        appendRoutingFiles(context, repo, null);
+        appendRequirementFiles(context, repo, requirement, null);
         return context.toString().trim();
     }
 
@@ -130,17 +200,17 @@ public class LlmApiDecompositionEngine implements DecompositionEngine {
         context.append(String.join("\n", files)).append("\n\n");
     }
 
-    private void appendRoutingFiles(StringBuilder context, Path repo) {
+    private void appendRoutingFiles(StringBuilder context, Path repo, String tag) {
         context.append("=== КЛЮЧЕВЫЕ ROUTING/ENTRY POINT ФАЙЛЫ ===\n");
 
         for (Path file : findRoutingFiles(repo)) {
-            appendFileExcerpt(context, repo, file, ROUTING_FILE_LINE_LIMIT);
+            appendFileExcerpt(context, repo, file, ROUTING_FILE_LINE_LIMIT, tag);
         }
 
         context.append("\n");
     }
 
-    private void appendRequirementFiles(StringBuilder context, Path repo, String requirement) {
+    private void appendRequirementFiles(StringBuilder context, Path repo, String requirement, String tag) {
         context.append("=== ФАЙЛЫ СВЯЗАННЫЕ С ТРЕБОВАНИЕМ ===\n");
 
         String keywords = firstWords(requirement, 3);
@@ -165,7 +235,7 @@ public class LlmApiDecompositionEngine implements DecompositionEngine {
 
             Path path = Path.of(file).toAbsolutePath().normalize();
             if (Files.isRegularFile(path)) {
-                appendFileExcerpt(context, repo, path, REQUIREMENT_FILE_LINE_LIMIT);
+                appendFileExcerpt(context, repo, path, REQUIREMENT_FILE_LINE_LIMIT, tag);
             }
         }
 
@@ -205,8 +275,12 @@ public class LlmApiDecompositionEngine implements DecompositionEngine {
         return false;
     }
 
-    private void appendFileExcerpt(StringBuilder context, Path repo, Path file, int lineLimit) {
-        context.append("--- ").append(relativePath(repo, file)).append(" ---\n");
+    private void appendFileExcerpt(StringBuilder context, Path repo, Path file, int lineLimit, String tag) {
+        context.append("--- ");
+        if (tag != null && !tag.isBlank()) {
+            context.append("[").append(tag).append("] ");
+        }
+        context.append(relativePath(repo, file)).append(" ---\n");
         String content = readFileLines(file, lineLimit);
         if (!content.isBlank()) {
             context.append(content).append("\n");
@@ -486,21 +560,20 @@ public class LlmApiDecompositionEngine implements DecompositionEngine {
             return "";
         }
 
-        return "=== КОДОВАЯ БАЗА ===\n" + repoContext.trim() + "\n\n";
+        return repoContext.trim() + "\n\n";
     }
 
     private String buildPrompt(String requirement, String repoContext) {
         return """
-                You are a requirement decomposition engine for a software delivery planning tool.
+                Ты — движок декомпозиции требований для инструмента планирования разработки.
 
-                Сначала исследуй кодовую базу в своей рабочей директории: прочитай ключевые исходные файлы,
-                пойми существующую архитектуру и что уже реализовано. Не отвечай только по тексту требования.
+                Ниже предоставлен контекст кодовой базы в разделе КОДОВАЯ БАЗА — используй его для анализа.
+                Не пытайся читать файлы или вызывать инструменты — весь необходимый контекст уже есть в промпте.
 
-                Сначала агент ОБЯЗАН читать реальный код, как описано выше, но результат разложи
-                по трем слоям:
+                Разложи результат по трём слоям:
                 1. title этапа, title пункта и description пункта — только человеческий смысл и намерение.
                 2. considerations — короткие человеческие предупреждения, риски и подсказки переиспользования.
-                3. devNotes — технические детали из репозитория.
+                3. devNotes — технические детали из репозитория с тегами технологий и маркерами источника.
 
                 Для КАЖДОЙ задачи обязательно верни оба поля:
                 - title — короткий заголовок одной строкой, человеческим языком, без кода.
@@ -523,16 +596,36 @@ public class LlmApiDecompositionEngine implements DecompositionEngine {
                 методы, эндпоинты, DTO, таблицы и другие технические детали из кодовой базы.
                 Не помещай технические имена ни в какие другие поля.
 
+                В каждом devNote указывай технологический слой тегом в начале:
+                [1С], [API], [Фронт], [БД], [Инфраструктура] или другой подходящий.
+                Если тег следует из предоставленного контекста кодовой базы — добавь маркер [из кода].
+                Если это архитектурное предположение без подтверждения в коде — добавь [предположение].
+                Примеры:
+                "[1С][из кода] Документ ДополнительноеСоглашение — добавить реквизит ИспользуетсяПодписаниеПЭП"
+                "[API][из кода] Эндпоинт api_lk/user_ou_addend_check/get — найти в local/library/Routing/"
+                "[Фронт][предположение] Компонент модального окна OTP — вероятно в src/components/Modal"
+
                 integrationRisks оставь верхнеуровневым списком сквозных человеческих рисков интеграции
                 из настоящего кода: авторизация, хранение файлов, внешние интеграции, соседние домены.
                 Не превращай integrationRisks в список файлов или классов.
 
                 Decompose the requirement by business/domain areas.
-                Order stages by user/business value: first the core functionality that delivers the main
-                user outcome, then secondary work such as roles/administration and reporting.
-                Preserve real dependencies when they affect delivery order.
                 Split by the essence of the work, not by technical layers.
-                Do not create stages like controller, service, repository, database, tests, or UI unless they are true domain slices.
+                Do not create stages like controller, service, repository, database, tests, or UI
+                unless they are true domain slices.
+
+                ПОРЯДОК ЭТАПОВ. При декомпозиции учитывай технологические зависимости
+                как рекомендуемый порядок этапов:
+                сначала задачи на уровне хранения данных и бизнес-логики (1С, БД),
+                затем серверный API, затем серверный прокси/адаптер,
+                в последнюю очередь — интерфейс и фронтенд.
+
+                Этот порядок не жёсткий — если требование затрагивает только фронт
+                или только API без изменений в 1С, не создавай искусственные этапы
+                для слоёв которые не нужны. Если есть реальная причина изменить порядок
+                (например фронт можно делать параллельно с API) — отрази это в структуре
+                этапов и объясни в considerations почему порядок отличается от стандартного.
+                Preserve real dependencies when they affect delivery order.
 
                 СОРАЗМЕРНОСТЬ. Количество этапов и задач должно соответствовать реальному масштабу
                 требования, а не дробиться искусственно и не склеиваться чрезмерно.
@@ -543,55 +636,50 @@ public class LlmApiDecompositionEngine implements DecompositionEngine {
                   случаев, триггеров или событий, каждый такой самостоятельный сценарий должен
                   оставаться ОТДЕЛЬНОЙ задачей, а не склеиваться с другими в одну.
                   Не объединяй разные перечисленные сценарии под общим заголовком ради компактности.
-                - Группируй задачи в этапы по смыслу, но число задач должно покрывать все явно
-                  перечисленные в требовании сценарии по отдельности. Соразмерность ограничивает
-                  ИСКУССТВЕННОЕ дробление, а не склейку реально разных сценариев.
-                - Крупное требование (много сценариев, несколько подсистем) — несколько этапов, как и раньше.
-                - Не выделяй документацию и тесты в отдельный этап для мелких требований — это пункт, а не этап.
+                - Крупное требование (много сценариев, несколько подсистем) — несколько этапов.
+                - Не выделяй документацию и тесты в отдельный этап для мелких требований.
 
-                КУДА УБИРАТЬ СМЕЖНЫЕ ЭФФЕКТЫ. Продолжай глубоко анализировать код и находить смежные места,
-                которые затронет требование: снимки данных, автозаполнение, соседние интеграции, права,
-                совместимость. Но на мелких требованиях НЕ превращай каждый такой эффект в отдельную задачу
-                или этап — выноси его в considerations существующей задачи как предупреждение "не забыть проверить".
+                КУДА УБИРАТЬ СМЕЖНЫЕ ЭФФЕКТЫ. Глубоко анализируй код и находи смежные места,
+                которые затронет требование. Но на мелких требованиях НЕ превращай каждый такой
+                эффект в отдельную задачу или этап — выноси его в considerations существующей задачи.
                 Глубина анализа сохраняется, но изложение остается компактным.
 
                 Every work item must have title, description, and size: S, M, or L.
                 Every work item must include considerations and devNotes arrays. They may be empty arrays.
                 Include a focused list of integration risks.
 
-                You MUST return ONLY raw JSON.
-                Do not return markdown.
-                Do not wrap JSON in code fences.
-                Do not add any text before or after the JSON.
-                The JSON must strictly match the DecompositionResult structure and exact field names.
-                Do not add extra fields.
+                Ты ОБЯЗАН вернуть ТОЛЬКО чистый JSON без каких-либо пояснений, текста до или после.
+                Не используй markdown. Не оборачивай JSON в блоки кода.
+                JSON должен строго соответствовать структуре DecompositionResult.
+                Не добавляй лишних полей.
 
-                DecompositionResult JSON schema example:
+                Структура DecompositionResult:
                 {
                   "stages": [
                     {
-                      "title": "Human-readable stage title without technical identifiers",
+                      "title": "Человекочитаемый заголовок этапа без технических идентификаторов",
                       "items": [
                         {
-                          "title": "Short human-readable work item title without code or technical identifiers",
-                          "description": "Describe what the user should be able to do and how the completed result should behave. Explain the expected outcome in plain language so both analysts and implementation agents understand the task.",
+                          "title": "Короткий человекочитаемый заголовок задачи",
+                          "description": "2-4 предложения человеческим языком: что сделать и какой результат.",
                           "size": "S",
                           "considerations": [
-                            "Human-readable warning or reuse hint without technical identifiers"
+                            "Человекочитаемое предупреждение или подсказка без технических идентификаторов"
                           ],
                           "devNotes": [
-                            "Concrete real file/class/endpoint/method from the repository"
+                            "[1С][из кода] Конкретный файл/класс/эндпоинт из репозитория",
+                            "[Фронт][предположение] Предположение об архитектуре без подтверждения в коде"
                           ]
                         }
                       ]
                     }
                   ],
                   "integrationRisks": [
-                    "Concrete integration risk"
+                    "Конкретный интеграционный риск"
                   ]
                 }
 
-                %sRequirement:
+                %sТребование:
                 %s
                 """
                 .formatted(repoContextBlock(repoContext), requirement);

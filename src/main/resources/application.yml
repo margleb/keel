@@ -6,6 +6,16 @@ keel:
     model: ${KEEL_LLM_MODEL:codex-mini-latest}
     base-url: ${KEEL_LLM_BASE_URL:}
     repo-path: ${KEEL_REPO_PATH:}
+    repos:
+      - tag: "1С"
+        path: ${KEEL_REPO_1C:}
+        order: 1
+      - tag: "API"
+        path: ${KEEL_REPO_API:}
+        order: 2
+      - tag: "Фронт"
+        path: ${KEEL_REPO_FRONT:}
+        order: 3
   tracker:
     enabled: ${KEEL_TRACKER_ENABLED:false}
     token: ${KEEL_TRACKER_TOKEN:}

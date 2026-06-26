@@ -48,18 +48,20 @@ public class LlmApiDecompositionEngine implements DecompositionEngine {
 
     private final LlmProperties properties;
     private final ObjectMapper objectMapper;
+    private final PromptLoader promptLoader;
     private final RestClient restClient;
 
-    public LlmApiDecompositionEngine(LlmProperties properties, ObjectMapper objectMapper) {
+    public LlmApiDecompositionEngine(LlmProperties properties, ObjectMapper objectMapper, PromptLoader promptLoader) {
         this.properties = properties;
         this.objectMapper = objectMapper;
+        this.promptLoader = promptLoader;
         this.restClient = RestClient.builder().build();
     }
 
     @Override
     public DecompositionResult decompose(String requirement) {
         String repoContext = buildRepoContextForRequirement(requirement);
-        String prompt = buildPrompt(requirement, repoContext);
+        String prompt = promptLoader.buildPrompt(requirement, repoContext);
         String responseText = switch (provider()) {
             case "openai" -> callOpenAi(prompt);
             case "anthropic" -> callAnthropic(prompt);
@@ -555,133 +557,4 @@ public class LlmApiDecompositionEngine implements DecompositionEngine {
         return value.trim();
     }
 
-    private String repoContextBlock(String repoContext) {
-        if (repoContext == null || repoContext.isBlank()) {
-            return "";
-        }
-
-        return repoContext.trim() + "\n\n";
-    }
-
-    private String buildPrompt(String requirement, String repoContext) {
-        return """
-                Ты — движок декомпозиции требований для инструмента планирования разработки.
-
-                Ниже предоставлен контекст кодовой базы в разделе КОДОВАЯ БАЗА — используй его для анализа.
-                Не пытайся читать файлы или вызывать инструменты — весь необходимый контекст уже есть в промпте.
-
-                Разложи результат по трём слоям:
-                1. title этапа, title пункта и description пункта — только человеческий смысл и намерение.
-                2. considerations — короткие человеческие предупреждения, риски и подсказки переиспользования.
-                3. devNotes — технические детали из репозитория с тегами технологий и маркерами источника.
-
-                Для КАЖДОЙ задачи обязательно верни оба поля:
-                - title — короткий заголовок одной строкой, человеческим языком, без кода.
-                - description — 2-4 предложения, ЧЕЛОВЕЧЕСКИМ языком: что именно нужно сделать
-                  и каким должен быть результат. Это мини-ТЗ, понятное и аналитику, и агенту.
-                  Это НЕ список рисков, потому что риски должны быть в considerations. Это НЕ код.
-
-                В title этапа, title пункта и description пункта НЕ ДОЛЖНО быть ни одного имени файла, класса,
-                метода, эндпоинта, таблицы, DTO, пакета или другого технического идентификатора.
-                Они должны быть понятны не-техническому читателю. Имена файлов, классов, эндпоинтов
-                и других технических сущностей указывай только в devNotes. Пример допустимого title:
-                "Реализовать подачу и согласование заявки".
-
-                considerations заполняй человеческим языком из анализа кода, но БЕЗ имен файлов,
-                классов, методов, эндпоинтов, таблиц, DTO, пакетов и других технических идентификаторов.
-                Примеры тона: "в системе уже есть похожий механизм — проверить, можно ли переиспользовать";
-                "легко спутать с соседним модулем — конфликт доменов"; "возможно, часть уже есть".
-
-                devNotes — единственное место, где можно и нужно указывать реальные файлы, классы,
-                методы, эндпоинты, DTO, таблицы и другие технические детали из кодовой базы.
-                Не помещай технические имена ни в какие другие поля.
-
-                В каждом devNote указывай технологический слой тегом в начале:
-                [1С], [API], [Фронт], [БД], [Инфраструктура] или другой подходящий.
-                Если тег следует из предоставленного контекста кодовой базы — добавь маркер [из кода].
-                Если это архитектурное предположение без подтверждения в коде — добавь [предположение].
-                Примеры:
-                "[1С][из кода] Документ ДополнительноеСоглашение — добавить реквизит ИспользуетсяПодписаниеПЭП"
-                "[API][из кода] Эндпоинт api_lk/user_ou_addend_check/get — найти в local/library/Routing/"
-                "[Фронт][предположение] Компонент модального окна OTP — вероятно в src/components/Modal"
-
-                integrationRisks оставь верхнеуровневым списком сквозных человеческих рисков интеграции
-                из настоящего кода: авторизация, хранение файлов, внешние интеграции, соседние домены.
-                Не превращай integrationRisks в список файлов или классов.
-
-                Decompose the requirement by business/domain areas.
-                Split by the essence of the work, not by technical layers.
-                Do not create stages like controller, service, repository, database, tests, or UI
-                unless they are true domain slices.
-
-                ПОРЯДОК ЭТАПОВ. При декомпозиции учитывай технологические зависимости
-                как рекомендуемый порядок этапов:
-                сначала задачи на уровне хранения данных и бизнес-логики (1С, БД),
-                затем серверный API, затем серверный прокси/адаптер,
-                в последнюю очередь — интерфейс и фронтенд.
-
-                Этот порядок не жёсткий — если требование затрагивает только фронт
-                или только API без изменений в 1С, не создавай искусственные этапы
-                для слоёв которые не нужны. Если есть реальная причина изменить порядок
-                (например фронт можно делать параллельно с API) — отрази это в структуре
-                этапов и объясни в considerations почему порядок отличается от стандартного.
-                Preserve real dependencies when they affect delivery order.
-
-                СОРАЗМЕРНОСТЬ. Количество этапов и задач должно соответствовать реальному масштабу
-                требования, а не дробиться искусственно и не склеиваться чрезмерно.
-                - Маленькое требование (одно поле, один экран, одна локальная функция) — как правило
-                  1 этап и 2-4 задачи. НЕ создавай отдельный этап ради одной-двух мелких задач;
-                  смежные эффекты выноси в considerations существующих задач.
-                - Если в требовании есть несколько ЯВНО ПЕРЕЧИСЛЕННЫХ самостоятельных сценариев,
-                  случаев, триггеров или событий, каждый такой самостоятельный сценарий должен
-                  оставаться ОТДЕЛЬНОЙ задачей, а не склеиваться с другими в одну.
-                  Не объединяй разные перечисленные сценарии под общим заголовком ради компактности.
-                - Крупное требование (много сценариев, несколько подсистем) — несколько этапов.
-                - Не выделяй документацию и тесты в отдельный этап для мелких требований.
-
-                КУДА УБИРАТЬ СМЕЖНЫЕ ЭФФЕКТЫ. Глубоко анализируй код и находи смежные места,
-                которые затронет требование. Но на мелких требованиях НЕ превращай каждый такой
-                эффект в отдельную задачу или этап — выноси его в considerations существующей задачи.
-                Глубина анализа сохраняется, но изложение остается компактным.
-
-                Every work item must have title, description, and size: S, M, or L.
-                Every work item must include considerations and devNotes arrays. They may be empty arrays.
-                Include a focused list of integration risks.
-
-                Ты ОБЯЗАН вернуть ТОЛЬКО чистый JSON без каких-либо пояснений, текста до или после.
-                Не используй markdown. Не оборачивай JSON в блоки кода.
-                JSON должен строго соответствовать структуре DecompositionResult.
-                Не добавляй лишних полей.
-
-                Структура DecompositionResult:
-                {
-                  "stages": [
-                    {
-                      "title": "Человекочитаемый заголовок этапа без технических идентификаторов",
-                      "items": [
-                        {
-                          "title": "Короткий человекочитаемый заголовок задачи",
-                          "description": "2-4 предложения человеческим языком: что сделать и какой результат.",
-                          "size": "S",
-                          "considerations": [
-                            "Человекочитаемое предупреждение или подсказка без технических идентификаторов"
-                          ],
-                          "devNotes": [
-                            "[1С][из кода] Конкретный файл/класс/эндпоинт из репозитория",
-                            "[Фронт][предположение] Предположение об архитектуре без подтверждения в коде"
-                          ]
-                        }
-                      ]
-                    }
-                  ],
-                  "integrationRisks": [
-                    "Конкретный интеграционный риск"
-                  ]
-                }
-
-                %sТребование:
-                %s
-                """
-                .formatted(repoContextBlock(repoContext), requirement);
-    }
 }

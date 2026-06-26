@@ -303,6 +303,50 @@
             min-height: 72px
         }
 
+        .image-import-row {
+            display: flex;
+            justify-content: flex-start;
+            margin: 1px 0 9px
+        }
+
+        .attachment-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--keel-tint);
+            color: var(--keel-deep);
+            border-radius: 99px;
+            padding: 5px 9px;
+            font-family: var(--mono);
+            font-size: 11px;
+            margin: 0 7px 7px 0
+        }
+
+        .attachment-pill.error {
+            background: #F5DADA;
+            color: var(--err)
+        }
+
+        .attachment-remove {
+            border: 0;
+            background: transparent;
+            color: currentColor;
+            padding: 0 2px;
+            font-family: var(--mono);
+            font-size: 13px;
+            line-height: 1
+        }
+
+        .mini-spin {
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+            border: 2px solid currentColor;
+            border-right-color: transparent;
+            display: inline-block;
+            animation: sp .8s linear infinite
+        }
+
         .new-req-toggle {
             display: flex;
             align-items: center;
@@ -425,6 +469,11 @@
             gap: 8px;
             justify-content: flex-end;
             margin-top: 9px
+        }
+
+        .req-edit-form .image-import-row {
+            margin-top: 9px;
+            margin-bottom: 0
         }
 
         .decompose-bar {
@@ -1037,15 +1086,7 @@
                 <div class="empty-list">Загрузка…</div>
             </div>
             <div class="new-req">
-                <button class="new-req-toggle" id="newReqToggle">＋ Новое требование</button>
-                <div class="form-hidden" id="newReqForm">
-                    <input id="nrTitle" placeholder="Название требования" maxlength="200">
-                    <textarea id="nrBody" placeholder="Текст требования…"></textarea>
-                    <div style="display:flex;gap:8px;justify-content:flex-end">
-                        <button class="btn btn-sm" id="nrCancel">Отмена</button>
-                        <button class="btn btn-sm btn-primary" id="nrSave">Создать</button>
-                    </div>
-                </div>
+                <button class="new-req-toggle" id="newReqBtn">＋ Новое требование</button>
             </div>
         </aside>
         <main class="main" id="main">
@@ -1075,6 +1116,34 @@
         const fmtDate = iso => { try { return new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
         const showToast = (html, ms = 3200) => { const t = $('toast'); t.innerHTML = html; t.classList.add('on'); setTimeout(() => t.classList.remove('on'), ms); };
         let state = { reqs: [], activeReqId: null, activeDecompId: null };
+        function bindImageExtract(buttonId, inputId, textareaId) {
+            const button = $(buttonId), input = $(inputId), textarea = $(textareaId);
+            if (!button || !input || !textarea) return;
+            button.onclick = () => input.click();
+            input.onchange = () => uploadImageText(input, button, textarea);
+        }
+        async function uploadImageText(input, button, textarea) {
+            const file = input.files && input.files[0];
+            if (!file) return;
+            const originalText = button.textContent;
+            const formData = new FormData();
+            formData.append('image', file);
+            button.disabled = true;
+            button.textContent = 'Читаю...';
+            try {
+                const r = await fetch('/api/extract-text', { method: 'POST', body: formData });
+                const body = await r.json().catch(() => ({}));
+                if (!r.ok) throw new Error(body.message || 'Не удалось извлечь текст.');
+                textarea.value = body.text || '';
+                textarea.focus();
+            } catch (e) {
+                alert('Не удалось прочитать скриншот:\n' + e.message);
+            } finally {
+                button.disabled = false;
+                button.textContent = originalText;
+                input.value = '';
+            }
+        }
         function parseDevNote(text) {
             const raw = '' + (text ?? '');
             const first = raw.match(/^\s*\[([^\]]+)\]\s*/);
@@ -1126,23 +1195,127 @@
             try { const r = await fetch('/api/requirements'); state.reqs = await r.json(); } catch (e) { state.reqs = []; }
             renderSidebar();
         }
-        $('newReqToggle').onclick = () => {
-            const f = $('newReqForm'), hidden = f.classList.contains('form-hidden');
-            f.classList.toggle('form-hidden', !hidden);
-            if (!hidden) { $('nrTitle').value = ''; $('nrBody').value = ''; } else $('nrTitle').focus();
-        };
-        $('nrCancel').onclick = () => { $('newReqForm').classList.add('form-hidden'); $('nrTitle').value = ''; $('nrBody').value = ''; };
-        $('nrSave').onclick = async () => {
-            const title = $('nrTitle').value.trim(), body = $('nrBody').value.trim();
+        $('newReqBtn').onclick = () => openNewRequirementForm();
+        function renderWelcome() {
+            $('main').innerHTML = '<div class="welcome" id="welcome"><div class="big">⚓</div><h2>Выберите требование</h2><p>Выберите требование слева или создайте новое, чтобы начать декомпозицию.</p></div>';
+        }
+        function openNewRequirementForm() {
+            state.activeReqId = null;
+            state.activeDecompId = null;
+            $('pushBtn').disabled = true;
+            renderSidebar();
+            $('main').innerHTML = `
+                <div class="req-detail" id="newReqDetail">
+                  <div class="req-detail-head">
+                    <h1>Новое требование</h1>
+                  </div>
+                  <div style="margin-bottom:16px">
+                    <label style="display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:5px">Название</label>
+                    <input id="newTitle" placeholder="Короткое название требования" maxlength="200" style="width:100%;border:1px solid var(--line-strong);border-radius:7px;padding:7px 10px;font-size:15px;font-weight:500;display:block">
+                  </div>
+                  <div style="margin-bottom:16px">
+                    <label style="display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:5px">Текст требования</label>
+                    <textarea id="newBody" placeholder="Вставьте текст требования, скопируйте из трекера или перетащите файл..." style="width:100%;min-height:300px;border:1px solid var(--line-strong);border-radius:7px;padding:7px 10px;font-size:14.5px;resize:vertical;display:block"></textarea>
+                  </div>
+                  <div id="newDropZone" style="border:2px dashed var(--line-strong);border-radius:10px;padding:24px;text-align:center;color:var(--ink-faint);font-size:14px;margin-bottom:20px;cursor:pointer;transition:.15s">
+                    📎 Перетащите скриншоты или нажмите для выбора
+                    <br>
+                    <span style="font-family:var(--mono);font-size:11px">
+                      PNG, JPG, WEBP до 5 МБ каждый
+                    </span>
+                    <input type="file" id="newImageInput" accept="image/*" multiple style="display:none">
+                  </div>
+                  <div id="newAttachments" style="margin-bottom:20px"></div>
+                  <div style="display:flex;gap:10px;justify-content:flex-end">
+                    <button class="btn btn-sm" id="newCancelBtn">Отмена</button>
+                    <button class="btn btn-sm btn-primary" id="newSaveBtn">Создать требование</button>
+                  </div>
+                </div>
+            `;
+            bindNewRequirementForm();
+            $('newTitle').focus();
+        }
+        function bindNewRequirementForm() {
+            const title = $('newTitle'), body = $('newBody'), dropZone = $('newDropZone'), input = $('newImageInput');
+            dropZone.onclick = () => input.click();
+            input.onchange = () => { addNewRequirementFiles(input.files); input.value = ''; };
+            body.addEventListener('paste', e => {
+                const files = [...(e.clipboardData?.items || [])]
+                    .filter(item => item.kind === 'file' && item.type.startsWith('image/'))
+                    .map(item => item.getAsFile())
+                    .filter(Boolean);
+                if (files.length) {
+                    e.preventDefault();
+                    addNewRequirementFiles(files);
+                }
+            });
+            ['dragenter', 'dragover'].forEach(eventName => dropZone.addEventListener(eventName, e => {
+                e.preventDefault();
+                dropZone.style.borderColor = 'var(--keel)';
+                dropZone.style.background = 'var(--keel-tint)';
+            }));
+            ['dragleave', 'drop'].forEach(eventName => dropZone.addEventListener(eventName, e => {
+                e.preventDefault();
+                dropZone.style.borderColor = 'var(--line-strong)';
+                dropZone.style.background = 'transparent';
+            }));
+            dropZone.addEventListener('drop', e => addNewRequirementFiles(e.dataTransfer.files));
+            $('newCancelBtn').onclick = () => {
+                if ((title.value.trim() || body.value.trim()) && !confirm('Есть несохранённые данные. Выйти?')) return;
+                renderWelcome();
+            };
+            $('newSaveBtn').onclick = () => saveNewRequirement();
+        }
+        async function addNewRequirementFiles(files) {
+            const imageFiles = [...(files || [])].filter(file => file.type.startsWith('image/'));
+            await Promise.all(imageFiles.map(file => processNewRequirementFile(file)));
+        }
+        async function processNewRequirementFile(file) {
+            const pill = renderNewAttachment(file);
+            try {
+                const text = await extractImageText(file);
+                appendExtractedText($('newBody'), text);
+                pill.querySelector('.mini-spin')?.remove();
+                pill.querySelector('.attachment-status').textContent = 'готово';
+            } catch (e) {
+                pill.classList.add('error');
+                pill.querySelector('.mini-spin')?.remove();
+                pill.querySelector('.attachment-status').textContent = e.message;
+            }
+        }
+        function renderNewAttachment(file) {
+            const pill = document.createElement('span');
+            pill.className = 'attachment-pill';
+            pill.innerHTML = '<span class="mini-spin"></span><span>' + esc(file.name || 'скриншот') + '</span><span class="attachment-status">Читаю...</span><button type="button" class="attachment-remove" title="Удалить">×</button>';
+            pill.querySelector('.attachment-remove').onclick = () => pill.remove();
+            $('newAttachments').appendChild(pill);
+            return pill;
+        }
+        async function extractImageText(file) {
+            const formData = new FormData();
+            formData.append('image', file);
+            const r = await fetch('/api/extract-text', { method: 'POST', body: formData });
+            const body = await r.json().catch(() => ({}));
+            if (!r.ok) throw new Error(body.message || 'Не удалось извлечь текст.');
+            return body.text || '';
+        }
+        function appendExtractedText(textarea, text) {
+            const addition = (text || '').trim();
+            if (!textarea || !addition) return;
+            const current = textarea.value.trim();
+            textarea.value = current ? textarea.value.replace(/\s*$/, '') + '\n\n---\n\n' + addition : addition;
+        }
+        async function saveNewRequirement() {
+            const title = $('newTitle').value.trim(), body = $('newBody').value.trim();
             if (!title || !body) { alert('Заполните название и текст.'); return; }
             try {
                 const r = await fetch('/api/requirements', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, body }) });
-                if (!r.ok) throw new Error('Ошибка сервера');
-                const req = await r.json();
-                $('newReqForm').classList.add('form-hidden'); $('nrTitle').value = ''; $('nrBody').value = '';
+                const responseBody = await r.json().catch(() => ({}));
+                if (!r.ok) throw new Error(responseBody.message || 'Ошибка сервера');
+                const req = responseBody;
                 await loadReqs(); openReq(req.id);
             } catch (e) { alert('Не удалось создать: ' + e.message); }
-        };
+        }
         async function openReq(id) {
             state.activeReqId = id; state.activeDecompId = null; $('pushBtn').disabled = true; renderSidebar();
             try {
@@ -1169,7 +1342,8 @@
         }
         function startEdit(req) {
             const w = $('reqBodyWrap');
-            w.innerHTML = `<div class="req-edit-form"><input id="editTitle" value="${esc(req.title)}"><textarea id="editBody">${esc(req.body)}</textarea><div class="req-edit-actions"><button class="btn btn-sm" id="editCancel">Отмена</button><button class="btn btn-sm btn-primary" id="editSave">Сохранить</button></div></div>`;
+            w.innerHTML = `<div class="req-edit-form"><input id="editTitle" value="${esc(req.title)}"><textarea id="editBody">${esc(req.body)}</textarea><div class="image-import-row"><button type="button" class="btn btn-sm" id="editImageBtn">📎 Вставить скриншот</button><input id="editImageInput" type="file" accept="image/*" style="display:none" hidden></div><div class="req-edit-actions"><button class="btn btn-sm" id="editCancel">Отмена</button><button class="btn btn-sm btn-primary" id="editSave">Сохранить</button></div></div>`;
+            bindImageExtract('editImageBtn', 'editImageInput', 'editBody');
             $('editCancel').onclick = () => { w.innerHTML = '<div class="req-body-text">' + esc(req.body) + '</div>'; };
             $('editSave').onclick = async () => {
                 const title = $('editTitle').value.trim(), body = $('editBody').value.trim();

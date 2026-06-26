@@ -30,6 +30,10 @@ keel:
     repo-path: ${KEEL_REPO_PATH:/home/margleb/projects/ranhigs/www}
 
 spring:
+  servlet:
+    multipart:
+      max-file-size: 6MB
+      max-request-size: 6MB
   datasource:
     url: jdbc:h2:file:./data/keel;AUTO_SERVER=TRUE
     driver-class-name: org.h2.Driver

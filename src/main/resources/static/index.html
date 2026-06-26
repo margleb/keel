@@ -772,6 +772,89 @@
             word-break: break-word
         }
 
+        .dev-note {
+            display: block;
+            font-family: var(--mono);
+            font-size: 11px;
+            line-height: 1.65;
+            margin-bottom: 5px;
+            word-break: break-word
+        }
+
+        .dev-note:last-child {
+            margin-bottom: 0
+        }
+
+        .dev-badge {
+            font-family: var(--mono);
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+            display: inline-block;
+            margin-right: 4px;
+            word-break: normal
+        }
+
+        .dev-badge-tech-one-c {
+            background: var(--amber-tint);
+            color: var(--amber)
+        }
+
+        .dev-badge-tech-api {
+            background: var(--keel-tint);
+            color: var(--keel-deep)
+        }
+
+        .dev-badge-tech-front {
+            background: #E8F0FE;
+            color: #2952A3
+        }
+
+        .dev-badge-tech-db,
+        .dev-badge-tech-other {
+            background: var(--surface-2);
+            color: var(--ink-soft)
+        }
+
+        .dev-badge-source-code {
+            background: var(--ok-tint);
+            color: var(--ok)
+        }
+
+        .dev-badge-source-guess {
+            background: var(--amber-tint);
+            color: var(--amber)
+        }
+
+        .dev-note-body {
+            color: var(--code-ink)
+        }
+
+        .result-filter {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap
+        }
+
+        .result-filter button {
+            border: 1px solid var(--line-strong);
+            background: var(--surface);
+            color: var(--ink-soft);
+            padding: 5px 12px;
+            border-radius: 99px;
+            font-family: var(--mono);
+            font-size: 11px;
+            cursor: pointer
+        }
+
+        .result-filter button.active {
+            background: var(--keel);
+            color: #fff;
+            border-color: var(--keel)
+        }
+
         .rail {
             position: sticky;
             top: 20px;
@@ -986,11 +1069,48 @@
     <script>
         const $ = id => document.getElementById(id);
         const esc = s => ('' + (s ?? '')).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        const escAttr = s => esc(s).replace(/"/g, '&quot;');
         const pad = n => String(n).padStart(2, '0');
         const sizeOf = s => { const u = ('' + (s || 'M')).toUpperCase(); return ['S', 'M', 'L'].includes(u) ? u : 'M'; };
         const fmtDate = iso => { try { return new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
         const showToast = (html, ms = 3200) => { const t = $('toast'); t.innerHTML = html; t.classList.add('on'); setTimeout(() => t.classList.remove('on'), ms); };
         let state = { reqs: [], activeReqId: null, activeDecompId: null };
+        function parseDevNote(text) {
+            const raw = '' + (text ?? '');
+            const first = raw.match(/^\s*\[([^\]]+)\]\s*/);
+            if (!first) return { techTag: null, sourceTag: null, body: raw };
+            let body = raw.slice(first[0].length);
+            const second = body.match(/^\s*\[([^\]]+)\]\s*/);
+            if (!second) return { techTag: first[1].trim() || null, sourceTag: null, body };
+            body = body.slice(second[0].length);
+            return {
+                techTag: first[1].trim() || null,
+                sourceTag: second[1].trim() || null,
+                body
+            };
+        }
+        function devNoteTechClass(tag) {
+            if (tag === '1С' || tag === '1C') return 'dev-badge-tech-one-c';
+            if (tag === 'API') return 'dev-badge-tech-api';
+            if (tag === 'Фронт') return 'dev-badge-tech-front';
+            if (tag === 'БД') return 'dev-badge-tech-db';
+            return 'dev-badge-tech-other';
+        }
+        function devNoteSourceClass(tag) {
+            if (tag === 'из кода') return 'dev-badge-source-code';
+            if (tag === 'предположение') return 'dev-badge-source-guess';
+            return 'dev-badge-tech-other';
+        }
+        function renderDevBadge(tag, cls) {
+            return tag ? '<span class="dev-badge ' + cls + '">[' + esc(tag) + ']</span>' : '';
+        }
+        function renderDevNote(text) {
+            const note = parseDevNote(text);
+            return '<div class="dev-note">'
+                + renderDevBadge(note.techTag, devNoteTechClass(note.techTag))
+                + renderDevBadge(note.sourceTag, devNoteSourceClass(note.sourceTag))
+                + '<span class="dev-note-body">' + esc(note.body) + '</span></div>';
+        }
         function statusBadge(s) {
             if (s === 'DECOMPOSED') return '<span class="badge badge-decomposed">разобрано</span>';
             if (s === 'PUSHED') return '<span class="badge badge-pushed">в трекере</span>';
@@ -1105,6 +1225,7 @@
             const w = $('resultWrap'); if (!w) return;
             const stages = Array.isArray(result?.stages) ? result.stages : [];
             const risks = Array.isArray(result?.integrationRisks) ? result.integrationRisks : [];
+            const techTags = new Set();
             let total = 0, sz = { S: 0, M: 0, L: 0 };
             const deckHtml = stages.map((st, si) => {
                 const items = Array.isArray(st.items) ? st.items : [];
@@ -1112,15 +1233,29 @@
                     total++; const s = sizeOf(t.size); sz[s]++;
                     const cs = Array.isArray(t.considerations) ? t.considerations : [];
                     const dv = Array.isArray(t.devNotes) ? t.devNotes : [];
-                    return '<div class="task"><div class="thead"><span class="chip ' + s + '">' + s + '</span><span class="ttl">' + esc(t.title) + '</span><span class="chev">›</span></div><div class="tbody"><div class="lay"><div class="lay-label">описание</div><div class="desc">' + esc(t.description || '') + '</div></div>' + (cs.length ? '<div class="lay"><div class="lay-label">что учесть</div><ul class="cons">' + cs.map(c => '<li>' + esc(c) + '</li>').join('') + '</ul></div>' : '') + (dv.length ? '<button class="dev-toggle">⌄ для разработчика · ' + dv.length + '</button><div class="dev">' + dv.map(d => '<code>' + esc(d) + '</code>').join('') + '</div>' : '') + '</div></div>';
+                    const taskTags = [...new Set(dv.map(parseDevNote).map(n => n.techTag).filter(Boolean))];
+                    taskTags.forEach(tag => techTags.add(tag));
+                    return '<div class="task" data-tech-tags="' + escAttr(taskTags.join('|')) + '"><div class="thead"><span class="chip ' + s + '">' + s + '</span><span class="ttl">' + esc(t.title) + '</span><span class="chev">›</span></div><div class="tbody"><div class="lay"><div class="lay-label">описание</div><div class="desc">' + esc(t.description || '') + '</div></div>' + (cs.length ? '<div class="lay"><div class="lay-label">что учесть</div><ul class="cons">' + cs.map(c => '<li>' + esc(c) + '</li>').join('') + '</ul></div>' : '') + (dv.length ? '<button class="dev-toggle">⌄ для разработчика · ' + dv.length + '</button><div class="dev">' + dv.map(renderDevNote).join('') + '</div>' : '') + '</div></div>';
                 }).join('');
                 return '<div class="stage"><div class="node">' + pad(si + 1) + '</div><div class="stage-head"><div class="stage-title">' + esc(st.title) + '</div><div class="stage-count">' + items.length + ' зад.</div></div>' + tasksHtml + '</div>';
             }).join('');
-            w.innerHTML = '<div style="font-family:var(--mono);font-size:12px;color:var(--ink-soft);margin-bottom:14px">' + stages.length + ' этапов · ' + total + ' задач · S ' + sz.S + ' / M ' + sz.M + ' / L ' + sz.L + '</div><div class="result-wrap"><div class="deck"><div class="spine"></div>' + deckHtml + '</div><aside class="rail"><div class="panel"><h3>Сквозные риски</h3>' + (risks.map(r => '<div class="risk"><span class="risk-icon">!</span><div>' + esc(r) + '</div></div>').join('') || '<div style="color:var(--ink-faint);font-size:13px">рисков не выделено</div>') + '</div><div class="panel"><h3>В трекер</h3><div class="map">этап → <b>родит. задача</b><br>задача → <b>дочерняя</b><br>размер → <b>тег</b></div></div></aside></div>';
+            const filterHtml = '<div class="result-filter"><button class="active" data-tech="">Все</button>' + [...techTags].map(tag => '<button data-tech="' + escAttr(tag) + '">' + esc(tag) + '</button>').join('') + '</div>';
+            w.innerHTML = '<div style="font-family:var(--mono);font-size:12px;color:var(--ink-soft);margin-bottom:14px">' + stages.length + ' этапов · ' + total + ' задач · S ' + sz.S + ' / M ' + sz.M + ' / L ' + sz.L + '</div>' + filterHtml + '<div class="result-wrap"><div class="deck"><div class="spine"></div>' + deckHtml + '</div><aside class="rail"><div class="panel"><h3>Сквозные риски</h3>' + (risks.map(r => '<div class="risk"><span class="risk-icon">!</span><div>' + esc(r) + '</div></div>').join('') || '<div style="color:var(--ink-faint);font-size:13px">рисков не выделено</div>') + '</div><div class="panel"><h3>В трекер</h3><div class="map">этап → <b>родит. задача</b><br>задача → <b>дочерняя</b><br>размер → <b>тег</b></div></div></aside></div>';
             w.querySelectorAll('.task').forEach(el => {
                 el.querySelector('.thead').addEventListener('click', () => el.classList.toggle('open'));
                 const dt = el.querySelector('.dev-toggle'); if (dt) dt.addEventListener('click', e => { e.stopPropagation(); el.classList.toggle('dev-open'); });
             });
+            w.querySelectorAll('.result-filter button').forEach(btn => btn.addEventListener('click', () => {
+                const tag = btn.dataset.tech || '';
+                w.querySelectorAll('.result-filter button').forEach(x => x.classList.toggle('active', x === btn));
+                w.querySelectorAll('.task').forEach(task => {
+                    const tags = (task.dataset.techTags || '').split('|').filter(Boolean);
+                    task.hidden = !!tag && !tags.includes(tag);
+                });
+                w.querySelectorAll('.stage').forEach(stage => {
+                    stage.hidden = ![...stage.querySelectorAll('.task')].some(task => !task.hidden);
+                });
+            }));
         }
         document.querySelectorAll('#viewSeg button').forEach(b => b.addEventListener('click', () => {
             document.querySelectorAll('#viewSeg button').forEach(x => x.classList.remove('on'));

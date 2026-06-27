@@ -1,5 +1,9 @@
 keel:
   engine: ${KEEL_ENGINE:codex}
+  security:
+    users:
+      - username: ${KEEL_USER_1_NAME:admin}
+        password: ${KEEL_USER_1_PASSWORD:admin}
   llm:
     provider: ${KEEL_LLM_PROVIDER:openai}
     api-key: ${KEEL_LLM_API_KEY:}

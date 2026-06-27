@@ -1,6 +1,7 @@
 package dev.keel.controller;
 
 import dev.keel.store.DecompositionNotFoundException;
+import dev.keel.project.ProjectNotFoundException;
 import dev.keel.requirement.RequirementNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +24,12 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(RequirementNotFoundException.class)
     public ResponseEntity<ApiError> handleNotFound(RequirementNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ApiError(exception.getMessage()));
+    }
+
+    @ExceptionHandler(ProjectNotFoundException.class)
+    public ResponseEntity<ApiError> handleNotFound(ProjectNotFoundException exception) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ApiError(exception.getMessage()));
     }

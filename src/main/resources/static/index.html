@@ -196,6 +196,33 @@
             margin: 0
         }
 
+        .side-nav {
+            padding: 0 6px 8px
+        }
+
+        .side-nav button {
+            width: 100%;
+            border: 1px solid transparent;
+            background: transparent;
+            border-radius: 8px;
+            padding: 9px 10px;
+            text-align: left;
+            color: var(--ink-soft);
+            font-size: 13.5px;
+            font-weight: 500;
+            cursor: pointer
+        }
+
+        .side-nav button:hover {
+            background: var(--surface-2)
+        }
+
+        .side-nav button.active {
+            background: var(--keel-tint);
+            border-color: #C5DAD6;
+            color: var(--keel-deep)
+        }
+
         .req-list {
             flex: 1;
             overflow-y: auto;
@@ -474,6 +501,17 @@
         .req-edit-form .image-import-row {
             margin-top: 9px;
             margin-bottom: 0
+        }
+
+        .project-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 7px;
+            margin-bottom: 18px
         }
 
         .decompose-bar {
@@ -1191,6 +1229,9 @@
             <div class="sb-head">
                 <h2>Требования</h2>
             </div>
+            <div class="side-nav">
+                <button id="projectsNavBtn">Проекты</button>
+            </div>
             <div class="req-list" id="reqList">
                 <div class="empty-list">Загрузка…</div>
             </div>
@@ -1228,7 +1269,7 @@
         const riskAffectedStagesOf = r => Array.isArray(r?.affectedStages) ? r.affectedStages : [];
         const fmtDate = iso => { try { return new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
         const showToast = (html, ms = 3200) => { const t = $('toast'); t.innerHTML = html; t.classList.add('on'); setTimeout(() => t.classList.remove('on'), ms); };
-        let state = { reqs: [], activeReqId: null, activeDecompId: null };
+        let state = { reqs: [], activeReqId: null, activeDecompId: null, view: 'requirements' };
         function bindImageExtract(buttonId, inputId, textareaId) {
             const button = $(buttonId), input = $(inputId), textarea = $(textareaId);
             if (!button || !input || !textarea) return;
@@ -1300,19 +1341,25 @@
         }
         function renderSidebar() {
             const box = $('reqList');
+            const projectNav = $('projectsNavBtn');
+            if (projectNav) projectNav.classList.toggle('active', state.view === 'projects');
             if (!state.reqs.length) { box.innerHTML = '<div class="empty-list">Требований ещё нет.<br>Создайте первое ↓</div>'; return; }
-            box.innerHTML = state.reqs.map(r => `<div class="req-item${r.id === state.activeReqId ? ' active' : ''}" data-id="${r.id}"><div class="ri-title">${esc(r.title)}</div><div class="ri-meta">${statusBadge(r.status)}<span>${r.decompositionCount} разб.</span><span>${fmtDate(r.createdAt)}</span></div></div>`).join('');
+            box.innerHTML = state.reqs.map(r => `<div class="req-item${state.view !== 'projects' && r.id === state.activeReqId ? ' active' : ''}" data-id="${r.id}"><div class="ri-title">${esc(r.title)}</div><div class="ri-meta">${statusBadge(r.status)}<span>${r.decompositionCount} разб.</span><span>${fmtDate(r.createdAt)}</span></div></div>`).join('');
             box.querySelectorAll('.req-item').forEach(el => el.onclick = () => openReq(+el.dataset.id));
         }
         async function loadReqs() {
             try { const r = await fetch('/api/requirements'); state.reqs = await r.json(); } catch (e) { state.reqs = []; }
             renderSidebar();
         }
+        $('projectsNavBtn').onclick = () => openProjectsPage();
         $('newReqBtn').onclick = () => openNewRequirementForm();
         function renderWelcome() {
+            state.view = 'requirements';
             $('main').innerHTML = '<div class="welcome" id="welcome"><div class="big">⚓</div><h2>Выберите требование</h2><p>Выберите требование слева или создайте новое, чтобы начать декомпозицию.</p></div>';
+            renderSidebar();
         }
         function openNewRequirementForm() {
+            state.view = 'requirements';
             state.activeReqId = null;
             state.activeDecompId = null;
             $('pushBtn').disabled = true;
@@ -1430,7 +1477,7 @@
             } catch (e) { alert('Не удалось создать: ' + e.message); }
         }
         async function openReq(id) {
-            state.activeReqId = id; state.activeDecompId = null; $('pushBtn').disabled = true; renderSidebar();
+            state.view = 'requirements'; state.activeReqId = id; state.activeDecompId = null; $('pushBtn').disabled = true; renderSidebar();
             try {
                 const [rd, dd] = await Promise.all([fetch('/api/requirements/' + id), fetch('/api/requirements/' + id + '/decompositions')]);
                 const req = await rd.json(), decomps = await dd.json();
@@ -1467,6 +1514,100 @@
                     await loadReqs(); openReq(req.id);
                 } catch (e) { alert('Не удалось сохранить: ' + e.message); }
             };
+        }
+        async function openProjectsPage() {
+            state.view = 'projects';
+            state.activeReqId = null;
+            state.activeDecompId = null;
+            $('pushBtn').disabled = true;
+            renderSidebar();
+            $('main').innerHTML = '<div class="req-detail"><div class="req-detail-head"><h1>Проекты</h1><button class="btn btn-sm btn-primary" id="newProjectBtn">Новый проект</button></div><div id="projectListBox"><div class="empty-list">Загрузка…</div></div></div>';
+            $('newProjectBtn').onclick = () => openProjectForm();
+            await loadProjectsIntoPage();
+        }
+        async function loadProjectsIntoPage() {
+            const box = $('projectListBox'); if (!box) return;
+            try {
+                const r = await fetch('/api/projects');
+                const body = await r.json().catch(() => []);
+                if (!r.ok) throw new Error(body.message || 'Ошибка сервера');
+                renderProjectList(body);
+            } catch (e) {
+                box.innerHTML = '<div class="empty-list">Не удалось загрузить проекты.</div>';
+            }
+        }
+        function renderProjectList(projects) {
+            const box = $('projectListBox'); if (!box) return;
+            if (!projects.length) { box.innerHTML = '<div class="empty-list">Проектов ещё нет.</div>'; return; }
+            box.innerHTML = '<div class="project-list">' + projects.map(p => `<div class="req-item" data-id="${p.id}"><div class="ri-title">${esc(p.name)}</div><div class="ri-meta"><span>${fmtDate(p.createdAt)}</span></div></div>`).join('') + '</div>';
+            box.querySelectorAll('.req-item').forEach(el => el.onclick = () => openProject(+el.dataset.id));
+        }
+        async function openProject(id) {
+            state.view = 'projects';
+            state.activeReqId = null;
+            state.activeDecompId = null;
+            $('pushBtn').disabled = true;
+            renderSidebar();
+            try {
+                const r = await fetch('/api/projects/' + id);
+                const body = await r.json().catch(() => ({}));
+                if (!r.ok) throw new Error(body.message || 'Ошибка сервера');
+                renderProjectDetail(body);
+            } catch (e) {
+                $('main').innerHTML = '<div class="welcome"><div class="big">⚠</div><h2>Ошибка загрузки</h2></div>';
+            }
+        }
+        function renderProjectDetail(project) {
+            $('main').innerHTML = `<div class="req-detail"><div class="req-detail-head"><h1>${esc(project.name)}</h1><button class="btn btn-sm" id="editProjectBtn">Редактировать</button><button class="btn btn-sm" id="deleteProjectBtn">Удалить</button></div><div class="ri-meta" style="margin-bottom:10px"><span>создан ${fmtDate(project.createdAt)}</span></div><div class="req-body-text">${esc(project.description)}</div></div>`;
+            $('editProjectBtn').onclick = () => openProjectForm(project);
+            $('deleteProjectBtn').onclick = () => deleteProject(project);
+        }
+        function openProjectForm(project = null) {
+            state.view = 'projects';
+            state.activeReqId = null;
+            state.activeDecompId = null;
+            $('pushBtn').disabled = true;
+            renderSidebar();
+            const isEdit = !!project;
+            $('main').innerHTML = `
+                <div class="req-detail">
+                  <div class="req-detail-head">
+                    <h1>${isEdit ? 'Редактировать проект' : 'Новый проект'}</h1>
+                  </div>
+                  <div class="req-edit-form">
+                    <input id="projectName" value="${escAttr(project?.name || '')}" placeholder="Название">
+                    <textarea id="projectDescription" placeholder="Описание">${esc(project?.description || '')}</textarea>
+                    <div class="req-edit-actions">
+                      <button class="btn btn-sm" id="projectCancel">Отмена</button>
+                      <button class="btn btn-sm btn-primary" id="projectSave">${isEdit ? 'Сохранить' : 'Создать проект'}</button>
+                    </div>
+                  </div>
+                </div>
+            `;
+            $('projectCancel').onclick = () => isEdit ? openProject(project.id) : openProjectsPage();
+            $('projectSave').onclick = async () => {
+                const name = $('projectName').value.trim(), description = $('projectDescription').value.trim();
+                if (!name || !description) { alert('Заполните название и описание.'); return; }
+                try {
+                    const r = await fetch('/api/projects' + (isEdit ? '/' + project.id : ''), { method: isEdit ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, description }) });
+                    const body = await r.json().catch(() => ({}));
+                    if (!r.ok) throw new Error(body.message || 'Ошибка сервера');
+                    openProject(body.id);
+                } catch (e) { alert('Не удалось сохранить проект: ' + e.message); }
+            };
+            $('projectName').focus();
+        }
+        async function deleteProject(project) {
+            if (!confirm('Удалить проект "' + project.name + '"?')) return;
+            try {
+                const r = await fetch('/api/projects/' + project.id, { method: 'DELETE' });
+                if (!r.ok) {
+                    const body = await r.json().catch(() => ({}));
+                    throw new Error(body.message || 'Ошибка сервера');
+                }
+                showToast('Проект удалён');
+                openProjectsPage();
+            } catch (e) { alert('Не удалось удалить проект: ' + e.message); }
         }
         async function runDecompose(req) {
             const lb = $('loadingBox'); if (!lb) return;

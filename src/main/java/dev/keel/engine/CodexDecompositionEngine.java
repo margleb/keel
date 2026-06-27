@@ -173,6 +173,14 @@ public class CodexDecompositionEngine implements DecompositionEngine {
         или этап — выноси его в considerations существующей задачи как предупреждение "не забыть проверить".
         Глубина анализа сохраняется, но изложение остается компактным.
 
+        УВЕРЕННОСТЬ В РАЗМЕРЕ (sizeConfidence).
+        Для каждой задачи укажи насколько уверенно поставлен размер:
+        - "high" — задача хорошо понятна, аналог уже реализован в кодовой базе
+          или scope однозначен.
+        - "medium" — общее понимание есть, но детали могут повлиять на оценку.
+        - "low" — задача затрагивает незнакомый модуль, внешнюю интеграцию,
+          или devNotes содержат [предположение] без подтверждения из кода.
+
         Every work item must have title, description, and size: S, M, or L.
         Every work item must include considerations and devNotes arrays. They may be empty arrays.
         Include a focused list of integration risks.
@@ -194,6 +202,7 @@ public class CodexDecompositionEngine implements DecompositionEngine {
                   "title": "Short human-readable work item title without code or technical identifiers",
                   "description": "Describe what the user should be able to do and how the completed result should behave. Explain the expected outcome in plain language so both analysts and implementation agents understand the task.",
                   "size": "S",
+                  "sizeConfidence": "high",
                   "considerations": [
                     "Human-readable warning or reuse hint without technical identifiers"
                   ],

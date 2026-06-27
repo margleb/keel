@@ -36,7 +36,7 @@ public class DecompositionService {
     }
 
     public StoredDecompositionResponse decompose(String requirement, Long requirementId, List<Long> projectIds) {
-        DecompositionResult result = decompositionEngine.decompose(requirement);
+        DecompositionResult result = decompositionEngine.decompose(requirement, projectIds);
         Decomposition decomposition = decompositionStorageService.save(requirement, result, requirementId);
 
         if (requirementId != null) {

@@ -28,7 +28,7 @@ public class CodexDecompositionEngine implements DecompositionEngine {
   }
 
   @Override
-  public DecompositionResult decompose(String requirement) {
+  public DecompositionResult decompose(String requirement, List<Long> projectIds) {
     String prompt = buildPrompt(requirement);
     String stdout = runCodex(prompt);
 

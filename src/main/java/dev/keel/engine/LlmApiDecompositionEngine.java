@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.keel.model.DecompositionResult;
+import dev.keel.project.ProjectService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -49,18 +50,30 @@ public class LlmApiDecompositionEngine implements DecompositionEngine {
     private final LlmProperties properties;
     private final ObjectMapper objectMapper;
     private final PromptLoader promptLoader;
+    private final ProjectService projectService;
     private final RestClient restClient;
 
-    public LlmApiDecompositionEngine(LlmProperties properties, ObjectMapper objectMapper, PromptLoader promptLoader) {
+    public LlmApiDecompositionEngine(
+            LlmProperties properties,
+            ObjectMapper objectMapper,
+            PromptLoader promptLoader,
+            ProjectService projectService) {
         this.properties = properties;
         this.objectMapper = objectMapper;
         this.promptLoader = promptLoader;
+        this.projectService = projectService;
         this.restClient = RestClient.builder().build();
     }
 
     @Override
-    public DecompositionResult decompose(String requirement) {
-        String repoContext = buildRepoContextForRequirement(requirement);
+    public DecompositionResult decompose(String requirement, List<Long> projectIds) {
+        String repoContext;
+        if (projectIds != null && !projectIds.isEmpty()) {
+            repoContext = buildProjectContext(projectIds);
+        } else {
+            repoContext = buildRepoContextForRequirement(requirement);
+        }
+
         String prompt = promptLoader.buildPrompt(requirement, repoContext);
         String responseText = switch (provider()) {
             case "openai" -> callOpenAi(prompt);
@@ -79,6 +92,25 @@ public class LlmApiDecompositionEngine implements DecompositionEngine {
         } catch (IOException e) {
             throw new IllegalStateException("LLM returned invalid DecompositionResult JSON: " + responseText, e);
         }
+    }
+
+    private String buildProjectContext(List<Long> projectIds) {
+        StringBuilder context = new StringBuilder();
+
+        for (Long projectId : projectIds) {
+            try {
+                dev.keel.project.ProjectDetail project = projectService.findById(projectId);
+                if (context.length() > 0) {
+                    context.append("\n\n");
+                }
+                context.append("=== ПРОЕКТ: ").append(project.name()).append(" ===\n");
+                context.append(project.description());
+            } catch (dev.keel.project.ProjectNotFoundException e) {
+                LOGGER.warn("Project not found for context, skipping: {}", projectId);
+            }
+        }
+
+        return context.toString().trim();
     }
 
     private String extractJson(String text) {

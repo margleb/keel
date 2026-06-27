@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 public class StubDecompositionEngine implements DecompositionEngine {
 
     @Override
-    public DecompositionResult decompose(String requirement) {
+    public DecompositionResult decompose(String requirement, List<Long> projectIds) {
         return new DecompositionResult(
                 List.of(
                         new Stage(

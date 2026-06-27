@@ -138,6 +138,13 @@ public class CodexDecompositionEngine implements DecompositionEngine {
         из настоящего кода: авторизация, хранение файлов, внешние интеграции, соседние домены.
         Не превращай integrationRisks в список файлов или классов.
 
+        ВОПРОСЫ К ЗАКАЗЧИКУ (clarifications).
+        Если требование содержит неопределённости, противоречия или места где ты
+        сделал предположение влияющее на scope — вынеси их в clarifications.
+        Каждый вопрос должен быть конкретным: не "уточнить детали", а
+        "нужно ли сохранять историю изменений или только текущее состояние?".
+        Если требование полное и однозначное — clarifications может быть пустым списком.
+
         Decompose the requirement by business/domain areas.
         Order stages by user/business value: first the core functionality that delivers the main
         user outcome, then secondary work such as roles/administration and reporting.
@@ -199,6 +206,9 @@ public class CodexDecompositionEngine implements DecompositionEngine {
           ],
           "integrationRisks": [
             "Concrete integration risk"
+          ],
+          "clarifications": [
+            "Конкретный вопрос к заказчику который нужно уточнить до старта"
           ]
         }
 

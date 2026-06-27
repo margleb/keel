@@ -960,6 +960,35 @@
             margin-top: 1px
         }
 
+        .panel.attention {
+            background: #FFF8F0;
+            border-color: var(--amber-tint)
+        }
+
+        .panel.attention h3 {
+            color: var(--amber)
+        }
+
+        .clarification {
+            display: flex;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--ink-soft);
+            line-height: 1.5;
+            margin-bottom: 8px
+        }
+
+        .clarification:last-child {
+            margin-bottom: 0
+        }
+
+        .clarification-icon {
+            flex: none;
+            color: var(--amber);
+            font-family: var(--mono);
+            margin-top: 1px
+        }
+
         .map {
             font-family: var(--mono);
             font-size: 11.5px;
@@ -1403,6 +1432,7 @@
             const w = $('resultWrap'); if (!w) return;
             const stages = Array.isArray(result?.stages) ? result.stages : [];
             const risks = Array.isArray(result?.integrationRisks) ? result.integrationRisks : [];
+            const clarifications = Array.isArray(result?.clarifications) ? result.clarifications : [];
             const techTags = new Set();
             let total = 0, sz = { S: 0, M: 0, L: 0 };
             const deckHtml = stages.map((st, si) => {
@@ -1420,7 +1450,8 @@
             }).join('');
             const filterHtml = '<div class="result-filter"><button class="active" data-tech="">Все</button>' + [...techTags].map(tag => '<button data-tech="' + escAttr(tag) + '">' + esc(tag) + '</button>').join('') + '</div>';
             const pdfButton = state.activeDecompId != null ? '<button class="btn btn-sm" id="exportPdfBtn">⬇ PDF</button>' : '';
-            w.innerHTML = '<div style="display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:14px"><div style="font-family:var(--mono);font-size:12px;color:var(--ink-soft)">' + stages.length + ' этапов · ' + total + ' задач · S ' + sz.S + ' / M ' + sz.M + ' / L ' + sz.L + '</div>' + pdfButton + '</div>' + filterHtml + '<div class="result-wrap"><div class="deck"><div class="spine"></div>' + deckHtml + '</div><aside class="rail"><div class="panel"><h3>Сквозные риски</h3>' + (risks.map(r => '<div class="risk"><span class="risk-icon">!</span><div>' + esc(r) + '</div></div>').join('') || '<div style="color:var(--ink-faint);font-size:13px">рисков не выделено</div>') + '</div><div class="panel"><h3>В трекер</h3><div class="map">этап → <b>родит. задача</b><br>задача → <b>дочерняя</b><br>размер → <b>тег</b></div></div></aside></div>';
+            const clarificationsHtml = clarifications.length ? '<div class="panel attention"><h3>Вопросы к заказчику</h3>' + clarifications.map(q => '<div class="clarification"><span class="clarification-icon">?</span><div>' + esc(q) + '</div></div>').join('') + '</div>' : '';
+            w.innerHTML = '<div style="display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:14px"><div style="font-family:var(--mono);font-size:12px;color:var(--ink-soft)">' + stages.length + ' этапов · ' + total + ' задач · S ' + sz.S + ' / M ' + sz.M + ' / L ' + sz.L + '</div>' + pdfButton + '</div>' + filterHtml + '<div class="result-wrap"><div class="deck"><div class="spine"></div>' + deckHtml + '</div><aside class="rail"><div class="panel"><h3>Сквозные риски</h3>' + (risks.map(r => '<div class="risk"><span class="risk-icon">!</span><div>' + esc(r) + '</div></div>').join('') || '<div style="color:var(--ink-faint);font-size:13px">рисков не выделено</div>') + '</div>' + clarificationsHtml + '<div class="panel"><h3>В трекер</h3><div class="map">этап → <b>родит. задача</b><br>задача → <b>дочерняя</b><br>размер → <b>тег</b></div></div></aside></div>';
             const exportPdfBtn = $('exportPdfBtn');
             if (exportPdfBtn) exportPdfBtn.onclick = () => window.open('/api/decompositions/' + encodeURIComponent(state.activeDecompId) + '/export/pdf');
             w.querySelectorAll('.task').forEach(el => {

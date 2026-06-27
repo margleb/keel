@@ -269,6 +269,22 @@
             margin-top: 2px
         }
 
+        .project-tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin: 0 0 12px
+        }
+
+        .project-tag {
+            background: var(--keel-tint);
+            color: var(--keel-deep);
+            border-radius: 99px;
+            padding: 4px 8px;
+            font-family: var(--mono);
+            font-size: 11px
+        }
+
         .badge {
             font-family: var(--mono);
             font-size: 10px;
@@ -501,6 +517,42 @@
         .req-edit-form .image-import-row {
             margin-top: 9px;
             margin-bottom: 0
+        }
+
+        .project-picker {
+            border: 1px solid var(--line);
+            background: var(--surface-2);
+            border-radius: 8px;
+            padding: 10px 11px;
+            margin-bottom: 12px
+        }
+
+        .project-picker-title {
+            font-family: var(--mono);
+            font-size: 10.5px;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            color: var(--ink-faint);
+            margin-bottom: 8px
+        }
+
+        .project-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13.5px;
+            color: var(--ink-soft);
+            margin-bottom: 6px
+        }
+
+        .project-option:last-child {
+            margin-bottom: 0
+        }
+
+        .project-option input {
+            width: auto;
+            margin: 0;
+            display: inline-block
         }
 
         .project-list {
@@ -1269,7 +1321,38 @@
         const riskAffectedStagesOf = r => Array.isArray(r?.affectedStages) ? r.affectedStages : [];
         const fmtDate = iso => { try { return new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
         const showToast = (html, ms = 3200) => { const t = $('toast'); t.innerHTML = html; t.classList.add('on'); setTimeout(() => t.classList.remove('on'), ms); };
-        let state = { reqs: [], activeReqId: null, activeDecompId: null, view: 'requirements' };
+        let state = { reqs: [], projects: [], activeReqId: null, activeDecompId: null, view: 'requirements' };
+        async function loadProjectOptions() {
+            try {
+                const r = await fetch('/api/projects');
+                const body = await r.json().catch(() => []);
+                state.projects = r.ok && Array.isArray(body) ? body : [];
+            } catch (e) {
+                state.projects = [];
+            }
+            return state.projects;
+        }
+        function projectName(id) {
+            const project = state.projects.find(p => Number(p.id) === Number(id));
+            return project ? project.name : '#' + id;
+        }
+        function projectPickerHtml(selectedIds = []) {
+            const selected = new Set((selectedIds || []).map(id => String(id)));
+            const options = state.projects.length
+                ? state.projects.map(p => '<label class="project-option"><input type="checkbox" value="' + escAttr(p.id) + '"' + (selected.has(String(p.id)) ? ' checked' : '') + '> <span>' + esc(p.name) + '</span></label>').join('')
+                : '<div style="color:var(--ink-faint);font-size:13px">Проектов пока нет.</div>';
+            return '<div class="project-picker"><div class="project-picker-title">Проекты (контекст для разбора)</div>' + options + '</div>';
+        }
+        function selectedProjectIds(containerId) {
+            const container = $(containerId);
+            if (!container) return [];
+            return [...container.querySelectorAll('input[type="checkbox"]:checked')].map(input => Number(input.value));
+        }
+        function requirementProjectsHtml(projectIds = []) {
+            const ids = Array.isArray(projectIds) ? projectIds : [];
+            if (!ids.length) return '';
+            return '<div class="project-tags">' + ids.map(id => '<span class="project-tag">' + esc(projectName(id)) + '</span>').join('') + '</div>';
+        }
         function bindImageExtract(buttonId, inputId, textareaId) {
             const button = $(buttonId), input = $(inputId), textarea = $(textareaId);
             if (!button || !input || !textarea) return;
@@ -1358,12 +1441,13 @@
             $('main').innerHTML = '<div class="welcome" id="welcome"><div class="big">⚓</div><h2>Выберите требование</h2><p>Выберите требование слева или создайте новое, чтобы начать декомпозицию.</p></div>';
             renderSidebar();
         }
-        function openNewRequirementForm() {
+        async function openNewRequirementForm() {
             state.view = 'requirements';
             state.activeReqId = null;
             state.activeDecompId = null;
             $('pushBtn').disabled = true;
             renderSidebar();
+            await loadProjectOptions();
             $('main').innerHTML = `
                 <div class="req-detail" id="newReqDetail">
                   <div class="req-detail-head">
@@ -1386,6 +1470,7 @@
                     <input type="file" id="newImageInput" accept="image/*" multiple style="display:none">
                   </div>
                   <div id="newAttachments" style="margin-bottom:20px"></div>
+                  <div id="newProjectPicker">${projectPickerHtml()}</div>
                   <div style="display:flex;gap:10px;justify-content:flex-end">
                     <button class="btn btn-sm" id="newCancelBtn">Отмена</button>
                     <button class="btn btn-sm btn-primary" id="newSaveBtn">Создать требование</button>
@@ -1467,9 +1552,10 @@
         }
         async function saveNewRequirement() {
             const title = $('newTitle').value.trim(), body = $('newBody').value.trim();
+            const projectIds = selectedProjectIds('newProjectPicker');
             if (!title || !body) { alert('Заполните название и текст.'); return; }
             try {
-                const r = await fetch('/api/requirements', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, body }) });
+                const r = await fetch('/api/requirements', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, body, projectIds }) });
                 const responseBody = await r.json().catch(() => ({}));
                 if (!r.ok) throw new Error(responseBody.message || 'Ошибка сервера');
                 const req = responseBody;
@@ -1479,7 +1565,7 @@
         async function openReq(id) {
             state.view = 'requirements'; state.activeReqId = id; state.activeDecompId = null; $('pushBtn').disabled = true; renderSidebar();
             try {
-                const [rd, dd] = await Promise.all([fetch('/api/requirements/' + id), fetch('/api/requirements/' + id + '/decompositions')]);
+                const [rd, dd] = await Promise.all([fetch('/api/requirements/' + id), fetch('/api/requirements/' + id + '/decompositions'), loadProjectOptions()]);
                 const req = await rd.json(), decomps = await dd.json();
                 renderReqDetail(req, decomps);
             } catch (e) { $('main').innerHTML = '<div class="welcome"><div class="big">⚠</div><h2>Ошибка загрузки</h2></div>'; }
@@ -1488,7 +1574,7 @@
             const m = $('main');
             m.innerHTML = '<div class="req-detail" id="reqDetail"></div>';
             const d = $('reqDetail');
-            d.innerHTML = `<div class="req-detail-head"><h1>${esc(req.title)} ${statusBadge(req.status)}</h1><button class="btn btn-sm" id="editBtn">Редактировать</button></div><div id="reqBodyWrap"><div class="req-body-text">${esc(req.body)}</div></div><div class="decompose-bar"><h2>Декомпозиция</h2><button class="btn btn-sm btn-primary" id="decomposeBtn">⚡ Разобрать</button></div><div id="loadingBox" style="display:none"></div><div id="decompHistWrap"></div><div id="resultWrap"></div>`;
+            d.innerHTML = `<div class="req-detail-head"><h1>${esc(req.title)} ${statusBadge(req.status)}</h1><button class="btn btn-sm" id="editBtn">Редактировать</button></div><div id="reqBodyWrap">${requirementProjectsHtml(req.projectIds)}<div class="req-body-text">${esc(req.body)}</div></div><div class="decompose-bar"><h2>Декомпозиция</h2><button class="btn btn-sm btn-primary" id="decomposeBtn">⚡ Разобрать</button></div><div id="loadingBox" style="display:none"></div><div id="decompHistWrap"></div><div id="resultWrap"></div>`;
             renderDecompHistory(decomps);
             if (decomps.length) loadDecomp(decomps[0].id);
             $('editBtn').onclick = () => startEdit(req);
@@ -1500,16 +1586,18 @@
             w.innerHTML = '<div class="decomp-history"><div class="dh-label">История разборов</div>' + decomps.map(d => `<div class="dh-item${d.id === state.activeDecompId ? ' active' : ''}" data-id="${d.id}"><div class="dh-meta">${fmtDate(d.createdAt)}</div><div class="dh-counts">${d.stageCount} эт. · ${d.taskCount} зад.</div></div>`).join('') + '</div>';
             w.querySelectorAll('.dh-item').forEach(el => el.onclick = () => loadDecomp(+el.dataset.id));
         }
-        function startEdit(req) {
+        async function startEdit(req) {
+            await loadProjectOptions();
             const w = $('reqBodyWrap');
-            w.innerHTML = `<div class="req-edit-form"><input id="editTitle" value="${esc(req.title)}"><textarea id="editBody">${esc(req.body)}</textarea><div class="image-import-row"><button type="button" class="btn btn-sm" id="editImageBtn">📎 Вставить скриншот</button><input id="editImageInput" type="file" accept="image/*" style="display:none" hidden></div><div class="req-edit-actions"><button class="btn btn-sm" id="editCancel">Отмена</button><button class="btn btn-sm btn-primary" id="editSave">Сохранить</button></div></div>`;
+            w.innerHTML = `<div class="req-edit-form"><input id="editTitle" value="${esc(req.title)}"><textarea id="editBody">${esc(req.body)}</textarea><div class="image-import-row"><button type="button" class="btn btn-sm" id="editImageBtn">📎 Вставить скриншот</button><input id="editImageInput" type="file" accept="image/*" style="display:none" hidden></div><div id="editProjectPicker">${projectPickerHtml(req.projectIds)}</div><div class="req-edit-actions"><button class="btn btn-sm" id="editCancel">Отмена</button><button class="btn btn-sm btn-primary" id="editSave">Сохранить</button></div></div>`;
             bindImageExtract('editImageBtn', 'editImageInput', 'editBody');
-            $('editCancel').onclick = () => { w.innerHTML = '<div class="req-body-text">' + esc(req.body) + '</div>'; };
+            $('editCancel').onclick = () => { w.innerHTML = requirementProjectsHtml(req.projectIds) + '<div class="req-body-text">' + esc(req.body) + '</div>'; };
             $('editSave').onclick = async () => {
                 const title = $('editTitle').value.trim(), body = $('editBody').value.trim();
+                const projectIds = selectedProjectIds('editProjectPicker');
                 if (!title || !body) { alert('Заполните оба поля.'); return; }
                 try {
-                    const r = await fetch('/api/requirements/' + req.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, body }) });
+                    const r = await fetch('/api/requirements/' + req.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, body, projectIds }) });
                     if (!r.ok) throw new Error('Ошибка');
                     await loadReqs(); openReq(req.id);
                 } catch (e) { alert('Не удалось сохранить: ' + e.message); }
@@ -1531,7 +1619,8 @@
                 const r = await fetch('/api/projects');
                 const body = await r.json().catch(() => []);
                 if (!r.ok) throw new Error(body.message || 'Ошибка сервера');
-                renderProjectList(body);
+                state.projects = Array.isArray(body) ? body : [];
+                renderProjectList(state.projects);
             } catch (e) {
                 box.innerHTML = '<div class="empty-list">Не удалось загрузить проекты.</div>';
             }
@@ -1620,7 +1709,7 @@
             const t0 = Date.now();
             const clock = setInterval(() => { const el = $('lEl'); if (!el) return; const s = Math.floor((Date.now() - t0) / 1000); el.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }, 1000);
             try {
-                const r = await fetch('/api/decompose', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requirement: req.body, requirementId: req.id }) });
+                const r = await fetch('/api/decompose', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requirement: req.body, requirementId: req.id, projectIds: req.projectIds || [] }) });
                 if (!r.ok) { const b = await r.json(); throw new Error(b.message || 'Ошибка сервера'); }
                 const stored = await r.json();
                 state.activeDecompId = stored.id;

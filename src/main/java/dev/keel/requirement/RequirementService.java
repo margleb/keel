@@ -24,6 +24,7 @@ public class RequirementService {
         Requirement requirement = new Requirement();
         requirement.setTitle(request.title());
         requirement.setBody(request.body());
+        requirement.setProjectIds(request.projectIds());
         requirement.setStatus(Requirement.STATUS_DRAFT);
 
         return requirementRepository.save(requirement);
@@ -34,6 +35,7 @@ public class RequirementService {
         Requirement requirement = getRequirement(id);
         requirement.setTitle(request.title());
         requirement.setBody(request.body());
+        requirement.setProjectIds(request.projectIds());
 
         return requirementRepository.save(requirement);
     }
@@ -80,7 +82,8 @@ public class RequirementService {
                 requirement.getBody(),
                 requirement.getStatus(),
                 requirement.getCreatedAt(),
-                requirement.getUpdatedAt()
+                requirement.getUpdatedAt(),
+                requirement.getProjectIds()
         );
     }
 }

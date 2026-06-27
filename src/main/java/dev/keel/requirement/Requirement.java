@@ -1,14 +1,20 @@
 package dev.keel.requirement;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Lob;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 public class Requirement {
@@ -36,6 +42,11 @@ public class Requirement {
 
     @Column(nullable = false)
     private Instant updatedAt;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "requirement_project_ids", joinColumns = @JoinColumn(name = "requirement_id"))
+    @Column(name = "project_id")
+    private List<Long> projectIds = new ArrayList<>();
 
     @PrePersist
     void prePersist() {
@@ -91,5 +102,13 @@ public class Requirement {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public List<Long> getProjectIds() {
+        return projectIds;
+    }
+
+    public void setProjectIds(List<Long> projectIds) {
+        this.projectIds = projectIds == null ? new ArrayList<>() : new ArrayList<>(projectIds);
     }
 }

@@ -1,9 +1,11 @@
 package dev.keel.requirement;
 
 import jakarta.validation.constraints.NotBlank;
+import java.util.List;
 
 public record RequirementCreateRequest(
         @NotBlank String title,
-        @NotBlank String body
+        @NotBlank String body,
+        List<Long> projectIds
 ) {
 }

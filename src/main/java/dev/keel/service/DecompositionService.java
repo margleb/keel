@@ -7,6 +7,7 @@ import dev.keel.requirement.RequirementService;
 import dev.keel.store.Decomposition;
 import dev.keel.store.DecompositionStorageService;
 import dev.keel.store.StoredDecompositionResponse;
+import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -27,10 +28,14 @@ public class DecompositionService {
     }
 
     public StoredDecompositionResponse decompose(String requirement) {
-        return decompose(requirement, null);
+        return decompose(requirement, null, List.of());
     }
 
     public StoredDecompositionResponse decompose(String requirement, Long requirementId) {
+        return decompose(requirement, requirementId, List.of());
+    }
+
+    public StoredDecompositionResponse decompose(String requirement, Long requirementId, List<Long> projectIds) {
         DecompositionResult result = decompositionEngine.decompose(requirement);
         Decomposition decomposition = decompositionStorageService.save(requirement, result, requirementId);
 

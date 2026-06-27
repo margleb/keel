@@ -1,6 +1,8 @@
 package dev.keel.controller;
 
 import dev.keel.model.DecompositionRequest;
+import dev.keel.requirement.Requirement;
+import dev.keel.requirement.RequirementService;
 import dev.keel.service.DecompositionService;
 import dev.keel.store.DecompositionStorageService;
 import dev.keel.store.DecompositionSummary;
@@ -26,15 +28,18 @@ public class DecompositionController {
     private final DecompositionService decompositionService;
     private final DecompositionStorageService decompositionStorageService;
     private final TrackerService trackerService;
+    private final RequirementService requirementService;
 
     public DecompositionController(
             DecompositionService decompositionService,
             DecompositionStorageService decompositionStorageService,
-            TrackerService trackerService
+            TrackerService trackerService,
+            RequirementService requirementService
     ) {
         this.decompositionService = decompositionService;
         this.decompositionStorageService = decompositionStorageService;
         this.trackerService = trackerService;
+        this.requirementService = requirementService;
     }
 
     @PostMapping("/decompose")
@@ -60,6 +65,13 @@ public class DecompositionController {
     @Operation(description = "Отправить разбор в трекер.")
     @ApiResponse(responseCode = "404", description = "Разбор не найден.")
     public TrackerPushResult pushToTracker(@PathVariable Long id) {
-        return trackerService.pushDecomposition(id);
+        TrackerPushResult result = trackerService.pushDecomposition(id);
+
+        StoredDecompositionResponse decomposition = decompositionStorageService.findById(id);
+        if (decomposition.requirementId() != null) {
+            requirementService.updateStatus(decomposition.requirementId(), Requirement.STATUS_PUSHED);
+        }
+
+        return result;
     }
 }

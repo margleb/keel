@@ -35,6 +35,9 @@ public class Decomposition {
     @Column(nullable = false)
     private int taskCount;
 
+    @Column(columnDefinition = "TEXT")
+    private String trackerEpicKeys;
+
     @PrePersist
     void prePersist() {
         if (createdAt == null) {
@@ -88,5 +91,13 @@ public class Decomposition {
 
     public void setTaskCount(int taskCount) {
         this.taskCount = taskCount;
+    }
+
+    public String getTrackerEpicKeys() {
+        return trackerEpicKeys;
+    }
+
+    public void setTrackerEpicKeys(String trackerEpicKeys) {
+        this.trackerEpicKeys = trackerEpicKeys;
     }
 }

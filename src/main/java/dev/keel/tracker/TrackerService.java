@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -44,6 +45,11 @@ public class TrackerService {
             throw new IllegalStateException("Трекер не настроен");
         }
 
+        Optional<TrackerPushResult> existing = decompositionStorageService.findTrackerResult(decompositionId);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+
         StoredDecompositionResponse decomposition = decompositionStorageService.findById(decompositionId);
         int epicsCreated = 0;
         int tasksCreated = 0;
@@ -60,7 +66,9 @@ public class TrackerService {
             }
         }
 
-        return new TrackerPushResult(epicsCreated, tasksCreated, epicKeys);
+        TrackerPushResult result = new TrackerPushResult(epicsCreated, tasksCreated, epicKeys);
+        decompositionStorageService.saveTrackerResult(decompositionId, result);
+        return result;
     }
 
     private String createIssue(Map<String, Object> body) {

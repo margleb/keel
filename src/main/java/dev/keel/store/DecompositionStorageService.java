@@ -1,10 +1,13 @@
 package dev.keel.store;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.keel.model.DecompositionResult;
 import dev.keel.model.Stage;
+import dev.keel.tracker.TrackerPushResult;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -65,10 +68,39 @@ public class DecompositionStorageService {
                 .toList();
     }
 
+    @Transactional
+    public void saveTrackerResult(Long decompositionId, TrackerPushResult result) {
+        Decomposition decomposition = decompositionRepository.findById(decompositionId)
+                .orElseThrow(() -> new DecompositionNotFoundException(decompositionId));
+        try {
+            decomposition.setTrackerEpicKeys(objectMapper.writeValueAsString(result.epicKeys()));
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Failed to serialize tracker epic keys", e);
+        }
+        decompositionRepository.save(decomposition);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<TrackerPushResult> findTrackerResult(Long decompositionId) {
+        Decomposition decomposition = decompositionRepository.findById(decompositionId)
+                .orElseThrow(() -> new DecompositionNotFoundException(decompositionId));
+        if (decomposition.getTrackerEpicKeys() == null) {
+            return Optional.empty();
+        }
+        try {
+            List<String> keys = objectMapper.readValue(
+                    decomposition.getTrackerEpicKeys(), new TypeReference<>() {});
+            return Optional.of(new TrackerPushResult(keys.size(), decomposition.getTaskCount(), keys));
+        } catch (JsonProcessingException e) {
+            return Optional.empty();
+        }
+    }
+
     public StoredDecompositionResponse toResponse(Decomposition decomposition, DecompositionResult result) {
         return new StoredDecompositionResponse(
                 decomposition.getId(),
                 decomposition.getCreatedAt(),
+                decomposition.getRequirementId(),
                 decomposition.getRequirement(),
                 result
         );

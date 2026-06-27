@@ -1,6 +1,7 @@
 package dev.keel.engine;
 
 import dev.keel.model.DecompositionResult;
+import dev.keel.model.IntegrationRisk;
 import dev.keel.model.Size;
 import dev.keel.model.Stage;
 import dev.keel.model.WorkItem;
@@ -63,8 +64,16 @@ public class StubDecompositionEngine implements DecompositionEngine {
                         )
                 ),
                 List.of(
-                        "External systems may interpret validation errors differently from this service.",
-                        "The final workflow can require additional authorization checks before production rollout."
+                        new IntegrationRisk(
+                                "Внешние системы могут интерпретировать ошибки валидации иначе",
+                                "medium",
+                                List.of()
+                        ),
+                        new IntegrationRisk(
+                                "Финальный сценарий может потребовать дополнительных проверок авторизации перед релизом",
+                                "high",
+                                List.of()
+                        )
                 )
         );
     }

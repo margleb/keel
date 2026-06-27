@@ -995,6 +995,47 @@
             margin-top: 1px
         }
 
+        .risk-body {
+            flex: 1
+        }
+
+        .risk-main {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            flex-wrap: wrap
+        }
+
+        .risk-severity {
+            flex: none;
+            font-family: var(--mono);
+            font-size: 10px;
+            padding: 1px 5px;
+            border-radius: 4px
+        }
+
+        .risk-severity-high {
+            background: #F6DADA;
+            color: var(--err)
+        }
+
+        .risk-severity-medium {
+            background: var(--amber-tint);
+            color: var(--amber)
+        }
+
+        .risk-severity-low {
+            background: var(--surface-2);
+            color: var(--ink-faint);
+            border: 1px solid var(--line)
+        }
+
+        .risk-stages {
+            color: var(--ink-faint);
+            font-size: 12px;
+            margin-top: 3px
+        }
+
         .panel.attention {
             background: #FFF8F0;
             border-color: var(--amber-tint)
@@ -1182,6 +1223,9 @@
         const pad = n => String(n).padStart(2, '0');
         const sizeOf = s => { const u = ('' + (s || 'M')).toUpperCase(); return ['S', 'M', 'L'].includes(u) ? u : 'M'; };
         const sizeConfidenceOf = v => { const c = ('' + (v || 'medium')).toLowerCase(); if (c === 'high') return { key: 'high', label: 'уверенно' }; if (c === 'low') return { key: 'low', label: 'неточно' }; return { key: 'medium', label: 'примерно' }; };
+        const riskSeverityOf = v => { const s = ('' + (v || 'medium')).toLowerCase(); if (s === 'high') return { key: 'high', label: 'высокий' }; if (s === 'low') return { key: 'low', label: 'низкий' }; return { key: 'medium', label: 'средний' }; };
+        const riskDescriptionOf = r => typeof r === 'string' ? r : (r?.description || '');
+        const riskAffectedStagesOf = r => Array.isArray(r?.affectedStages) ? r.affectedStages : [];
         const fmtDate = iso => { try { return new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
         const showToast = (html, ms = 3200) => { const t = $('toast'); t.innerHTML = html; t.classList.add('on'); setTimeout(() => t.classList.remove('on'), ms); };
         let state = { reqs: [], activeReqId: null, activeDecompId: null };
@@ -1490,7 +1534,8 @@
             const filterHtml = '<div class="result-filter"><button class="active" data-tech="">Все</button>' + [...techTags].map(tag => '<button data-tech="' + escAttr(tag) + '">' + esc(tag) + '</button>').join('') + '</div>';
             const pdfButton = state.activeDecompId != null ? '<button class="btn btn-sm" id="exportPdfBtn">⬇ PDF</button>' : '';
             const clarificationsHtml = clarifications.length ? '<div class="panel attention"><h3>Вопросы к заказчику</h3>' + clarifications.map(q => '<div class="clarification"><span class="clarification-icon">?</span><div>' + esc(q) + '</div></div>').join('') + '</div>' : '';
-            w.innerHTML = '<div style="display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:14px"><div style="font-family:var(--mono);font-size:12px;color:var(--ink-soft)">' + stages.length + ' этапов · ' + total + ' задач · S ' + sz.S + ' / M ' + sz.M + ' / L ' + sz.L + '</div>' + pdfButton + '</div>' + filterHtml + '<div class="result-wrap"><div class="deck"><div class="spine"></div>' + deckHtml + '</div><aside class="rail"><div class="panel"><h3>Сквозные риски</h3>' + (risks.map(r => '<div class="risk"><span class="risk-icon">!</span><div>' + esc(r) + '</div></div>').join('') || '<div style="color:var(--ink-faint);font-size:13px">рисков не выделено</div>') + '</div>' + clarificationsHtml + '<div class="panel"><h3>В трекер</h3><div class="map">этап → <b>родит. задача</b><br>задача → <b>дочерняя</b><br>размер → <b>тег</b></div></div></aside></div>';
+            const risksHtml = risks.map(r => { const sev = riskSeverityOf(r?.severity); const affected = riskAffectedStagesOf(r); const affectedHtml = affected.length ? '<div class="risk-stages">Затрагивает: ' + affected.map(esc).join(', ') + '</div>' : ''; return '<div class="risk"><span class="risk-icon">!</span><div class="risk-body"><div class="risk-main"><span>' + esc(riskDescriptionOf(r)) + '</span><span class="risk-severity risk-severity-' + sev.key + '">' + sev.label + '</span></div>' + affectedHtml + '</div></div>'; }).join('') || '<div style="color:var(--ink-faint);font-size:13px">рисков не выделено</div>';
+            w.innerHTML = '<div style="display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:14px"><div style="font-family:var(--mono);font-size:12px;color:var(--ink-soft)">' + stages.length + ' этапов · ' + total + ' задач · S ' + sz.S + ' / M ' + sz.M + ' / L ' + sz.L + '</div>' + pdfButton + '</div>' + filterHtml + '<div class="result-wrap"><div class="deck"><div class="spine"></div>' + deckHtml + '</div><aside class="rail"><div class="panel"><h3>Сквозные риски</h3>' + risksHtml + '</div>' + clarificationsHtml + '<div class="panel"><h3>В трекер</h3><div class="map">этап → <b>родит. задача</b><br>задача → <b>дочерняя</b><br>размер → <b>тег</b></div></div></aside></div>';
             const exportPdfBtn = $('exportPdfBtn');
             if (exportPdfBtn) exportPdfBtn.onclick = () => window.open('/api/decompositions/' + encodeURIComponent(state.activeDecompId) + '/export/pdf');
             w.querySelectorAll('.task').forEach(el => {

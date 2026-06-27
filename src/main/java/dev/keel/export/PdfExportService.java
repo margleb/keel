@@ -2,6 +2,7 @@ package dev.keel.export;
 
 import com.lowagie.text.pdf.BaseFont;
 import dev.keel.model.DecompositionResult;
+import dev.keel.model.IntegrationRisk;
 import dev.keel.model.Size;
 import dev.keel.model.Stage;
 import dev.keel.model.WorkItem;
@@ -72,7 +73,7 @@ public class PdfExportService {
     private String buildHtml(StoredDecompositionResponse stored) {
         DecompositionResult result = stored.result();
         List<Stage> stages = safeList(result == null ? null : result.stages());
-        List<String> risks = safeList(result == null ? null : result.integrationRisks());
+        List<IntegrationRisk> risks = safeList(result == null ? null : result.integrationRisks());
         Instant createdAt = stored.createdAt() == null ? Instant.now() : stored.createdAt();
         Instant generatedAt = Instant.now();
         int taskCount = countTasks(stages);
@@ -149,7 +150,7 @@ public class PdfExportService {
                     <div class="risks">
                       <div class="risks-title">Сквозные риски</div>
                     """);
-            appendListItems(html, risks, "");
+            appendListItems(html, risks.stream().map(this::riskDescription).toList(), "");
             html.append("  </div>\n");
         }
 
@@ -280,6 +281,10 @@ public class PdfExportService {
 
     private String twoDigits(int value) {
         return value < 10 ? "0" + value : Integer.toString(value);
+    }
+
+    private String riskDescription(IntegrationRisk risk) {
+        return risk == null ? "" : risk.description();
     }
 
     private String escapeMultiline(String value) {

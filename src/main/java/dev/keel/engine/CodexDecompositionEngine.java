@@ -181,6 +181,14 @@ public class CodexDecompositionEngine implements DecompositionEngine {
         - "low" — задача затрагивает незнакомый модуль, внешнюю интеграцию,
           или devNotes содержат [предположение] без подтверждения из кода.
 
+        ЗАВИСИМОСТИ МЕЖДУ ЗАДАЧАМИ (blockedBy).
+        Если задача не может начаться пока не завершена другая задача в том же этапе —
+        укажи её title в blockedBy.
+        Указывай только прямые блокирующие зависимости, без транзитивных.
+        Если задача ни от чего не зависит — оставь пустым списком.
+        Пример: задача "Настроить отправку уведомлений" заблокирована задачей
+        "Реализовать создание события" → blockedBy: ["Реализовать создание события"]
+
         Every work item must have title, description, and size: S, M, or L.
         Every work item must include considerations and devNotes arrays. They may be empty arrays.
         Include a focused list of integration risks.
@@ -203,6 +211,7 @@ public class CodexDecompositionEngine implements DecompositionEngine {
                   "description": "Describe what the user should be able to do and how the completed result should behave. Explain the expected outcome in plain language so both analysts and implementation agents understand the task.",
                   "size": "S",
                   "sizeConfidence": "high",
+                  "blockedBy": [],
                   "considerations": [
                     "Human-readable warning or reuse hint without technical identifiers"
                   ],

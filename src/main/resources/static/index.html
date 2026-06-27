@@ -736,6 +736,13 @@
             font-size: 14px
         }
 
+        .blocked-by {
+            padding: 0 13px 9px;
+            color: var(--ink-faint);
+            font-size: 12px;
+            line-height: 1.45
+        }
+
         .chev {
             color: var(--ink-faint);
             font-family: var(--mono);
@@ -1469,12 +1476,14 @@
                 const tasksHtml = items.map(t => {
                     total++; const s = sizeOf(t.size); sz[s]++;
                     const conf = sizeConfidenceOf(t.sizeConfidence);
+                    const blockedBy = Array.isArray(t.blockedBy) ? t.blockedBy : [];
                     const cs = Array.isArray(t.considerations) ? t.considerations : [];
                     const ac = Array.isArray(t.acceptanceCriteria) ? t.acceptanceCriteria : [];
                     const dv = Array.isArray(t.devNotes) ? t.devNotes : [];
                     const taskTags = [...new Set(dv.map(parseDevNote).map(n => n.techTag).filter(Boolean))];
                     taskTags.forEach(tag => techTags.add(tag));
-                    return '<div class="task" data-tech-tags="' + escAttr(taskTags.join('|')) + '"><div class="thead"><span class="chip ' + s + '">' + s + '</span><span class="confidence confidence-' + conf.key + '">' + conf.label + '</span><span class="ttl">' + esc(t.title) + '</span><span class="chev">›</span></div><div class="tbody"><div class="lay"><div class="lay-label">описание</div><div class="desc">' + esc(t.description || '') + '</div></div>' + (cs.length ? '<div class="lay"><div class="lay-label">что учесть</div><ul class="cons">' + cs.map(c => '<li>' + esc(c) + '</li>').join('') + '</ul></div>' : '') + (ac.length ? '<div class="lay"><div class="lay-label">критерии приёмки</div><ul class="cons acceptance">' + ac.map(c => '<li>' + esc(c) + '</li>').join('') + '</ul></div>' : '') + (dv.length ? '<button class="dev-toggle">⌄ для разработчика · ' + dv.length + '</button><div class="dev">' + dv.map(renderDevNote).join('') + '</div>' : '') + '</div></div>';
+                    const blockedHtml = blockedBy.length ? '<div class="blocked-by">🔒 Зависит от: ' + blockedBy.map(esc).join(', ') + '</div>' : '';
+                    return '<div class="task" data-tech-tags="' + escAttr(taskTags.join('|')) + '"><div class="thead"><span class="chip ' + s + '">' + s + '</span><span class="confidence confidence-' + conf.key + '">' + conf.label + '</span><span class="ttl">' + esc(t.title) + '</span><span class="chev">›</span></div>' + blockedHtml + '<div class="tbody"><div class="lay"><div class="lay-label">описание</div><div class="desc">' + esc(t.description || '') + '</div></div>' + (cs.length ? '<div class="lay"><div class="lay-label">что учесть</div><ul class="cons">' + cs.map(c => '<li>' + esc(c) + '</li>').join('') + '</ul></div>' : '') + (ac.length ? '<div class="lay"><div class="lay-label">критерии приёмки</div><ul class="cons acceptance">' + ac.map(c => '<li>' + esc(c) + '</li>').join('') + '</ul></div>' : '') + (dv.length ? '<button class="dev-toggle">⌄ для разработчика · ' + dv.length + '</button><div class="dev">' + dv.map(renderDevNote).join('') + '</div>' : '') + '</div></div>';
                 }).join('');
                 return '<div class="stage"><div class="node">' + pad(si + 1) + '</div><div class="stage-head"><div class="stage-title">' + esc(st.title) + '</div><div class="stage-count">' + items.length + ' зад.</div></div>' + tasksHtml + '</div>';
             }).join('');
